@@ -40,7 +40,7 @@ jobs:
       with:
         repoToken: "${{ secrets.GITHUB_TOKEN }}"
         firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}"
-        projectId: your-project-id
+        projectId: my-smart-shopper-e0c23
         channelId: live
         expires: 7d
         entryPoint: .
