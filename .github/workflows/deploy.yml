@@ -38,8 +38,10 @@ jobs:
     - name: Deploy to Firebase Hosting
       uses: FirebaseExtended/action-hosting-deploy@v0
       with:
-        repoToken: '${{ secrets.GITHUB_TOKEN }}' # This is a default token provided by GitHub
-        firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' # This is for Firebase Admin SDK if you use it for deployments, usually a JSON key
-        projectId: '${{ secrets.FIREBASE_PROJECT_ID }}' # Use the project ID from your secrets
-        channelId: live # Deploy to the 'live' channel (your main site)
-        # Other options like `expires` for preview channels can go here
+        repoToken: "${{ secrets.GITHUB_TOKEN }}"
+        firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}"
+        projectId: your-firebase-project-id
+        channelId: live
+        expires: 7d
+        entryPoint: .
+        firebaseToolsVersion: latest
