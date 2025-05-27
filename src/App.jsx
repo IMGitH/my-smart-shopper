@@ -1257,5 +1257,11 @@ ${rawShoppingList.join('\n')}`;
     </div>
   );
 }
-
+return (
+  <div className={`app-container ${darkMode ? 'dark' : 'light'}`}>
+    <h1>{t("SmartShopper", language)}</h1>
+    <p>{t("Smart Shopping, Simplified.", language)}</p>
+    {/* Add buttons, lists, inputs, etc. here */}
+  </div>
+);
 export default App;
