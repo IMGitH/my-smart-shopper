@@ -1199,80 +1199,9 @@ ${rawShoppingList.join('\n')}`;
       <footer className={`py-8 text-center text-sm opacity-70 ${darkMode ? 'bg-gray-900' : 'bg-gray-200'}`}>
         <p>&copy; 2025 {t('SmartShopper', language)}. {t('All rights reserved. Powered by intelligent design.', language)}</p>
       </footer>
-
-      {/* CDN for GSAP and ScrollTrigger */}
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
-      {/* Tailwind CSS CDN - Ensure this is loaded */}
-      <script src="https://cdn.tailwindcss.com"></script>
-      {/* Inter font from Google Fonts */}
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
-      <style>
-        {`
-          /* Custom font */
-          body {
-            font-family: 'Inter', sans-serif;
-          }
-
-          /* Basic animation for hero text */
-          @keyframes fadeInFromBottom {
-            from {
-              opacity: 0;
-              transform: translateY(20px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
-          }
-
-          .animate-fade-in-up {
-            animation: fadeInFromBottom 0.8s ease-out forwards;
-            opacity: 0; /* Ensure it's hidden before animation */
-          }
-
-          .animate-fade-in-up.delay-100 { animation-delay: 0.1s; }
-          .animate-fade-in-up.delay-200 { animation-delay: 0.2s; }
-          /* Add more delays as needed */
-
-          /* Hide scrollbar for aesthetics, but allow scrolling */
-          body {
-            overflow-y: scroll;
-            scrollbar-width: none; /* Firefox */
-            -ms-overflow-style: none;  /* IE and Edge */
-          }
-          body::-webkit-scrollbar {
-            display: none; /* Chrome, Safari, Opera*/
-          }
-          /* Basic prose styling for generated ideas (not used in this version, but kept for consistency if needed) */
-          .prose ul {
-            list-style-type: disc;
-            margin-left: 1.5em;
-          }
-          .prose li {
-            margin-bottom: 0.5em;
-          }
-        `}
-      </style>
-    </div>
-  );
-  return (
-    <div className={`app-container ${darkMode ? 'dark' : 'light'}`}>
-      <style>
-        {`
-          .prose ul {
-            list-style-type: disc;
-            margin-left: 1.5em;
-          }
-          .prose li {
-            margin-bottom: 0.5em;
-          }
-        `}
-      </style>
-      <h1>{t("SmartShopper", language)}</h1>
-      <p>{t("Smart Shopping, Simplified.", language)}</p>
     </div>
   );
 }
 
 export default App;
+
