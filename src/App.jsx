@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 
+/* global __app_id, __firebase_config, __initial_auth_token */
+
 // Firebase imports
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, collection, addDoc, query, where, deleteDoc } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, addDoc, query, deleteDoc } from 'firebase/firestore';
 
 // Translation content
 const translations = {
@@ -96,7 +98,6 @@ function App() {
 
   // Firebase state
   const [db, setDb] = useState(null);
-  const [auth, setAuth] = useState(null);
   const [userId, setUserId] = useState(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [firestoreLoading, setFirestoreLoading] = useState(false);
@@ -159,7 +160,6 @@ function App() {
       const firestore = getFirestore(app);
       const authentication = getAuth(app);
       setDb(firestore);
-      setAuth(authentication);
 
       const unsubscribe = onAuthStateChanged(authentication, async (user) => {
         if (user) {
@@ -268,9 +268,9 @@ function App() {
 
     rawShoppingList.forEach(item => {
       // Find a section where the item (case-insensitive) matches any part of the layout item key
-      const foundSection = Object.entries(storeLayout).find(([layoutItemKey, layoutSectionName]) =>
-        item.toLowerCase().includes(layoutItemKey.toLowerCase())
-      );
+    const foundSection = Object.entries(storeLayout).find(([layoutItemKey]) =>
+      item.toLowerCase().includes(layoutItemKey.toLowerCase())
+    );
 
       if (foundSection) {
         const sectionName = foundSection[1];
@@ -577,7 +577,7 @@ ${rawShoppingList.join('\n')}`;
           });
 
           await setDoc(userLayoutDocRef, { sections: updatedLayout, userId: userId }, { merge: true });
-          setLayoutMessage(t('Auto-mapping complete! Review and adjust in \"Store Layout\" section.', language));
+          setLayoutMessage(t('Auto-mapping complete! Review and adjust in "Store Layout" section.', language));
           sortShoppingList(); // Re-sort the list after auto-mapping
         } else {
           setAutoMappingError(t('AI returned unexpected format for auto-mapping.', language));
