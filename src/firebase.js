@@ -1,7 +1,7 @@
 // src/firebase.js
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
-import { getAuth, signInAnonymously } from 'firebase/auth'; // Also include auth if you're using it
+import { getAuth } from 'firebase/auth'; // Also include auth if you're using it
 
 // Your Firebase configuration (using Vite's environment variables or Canvas injected ones)
 const firebaseConfig = {

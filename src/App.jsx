@@ -1,17 +1,19 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 
+/* global __app_id, __firebase_config, __initial_auth_token */
+
 // Firebase imports
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, collection, addDoc, query, where, deleteDoc } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, addDoc, query, deleteDoc } from 'firebase/firestore';
 
 // Translation content
 const translations = {
   "SmartShopper": { "en": "SmartShopper", "he": "קניות חכמות" },
   "Manage List": { "en": "Manage List", "he": "ניהול רשימה" },
   "Store Layout": { "en": "Store Layout", "he": "מפת חנות" },
-  "Smart Shopping, Simplified.": { "en": "Smart Shopping, Simplified.", "he": "קניות חכמות, פשוטות." },
+  "Smart Shopping, Simplified.": { "en": "Smart Shopping, Simplified.", "he": "Smart Shopping, Simplified." },
   "Organize your groceries by store section for a faster, smarter trip.": { "en": "Organize your groceries by store section for a faster, smarter trip.", "he": "ארגן את הקניות שלך לפי מדורים בחנות לטיול מהיר וחכם יותר." },
   "Start Shopping": { "en": "Start Shopping", "he": "התחל לקנות" },
   "Your Smart Shopping List": { "en": "Your Smart Shopping List", "he": "רשימת הקניות החכמה שלך" },
@@ -96,7 +98,6 @@ function App() {
 
   // Firebase state
   const [db, setDb] = useState(null);
-  const [auth, setAuth] = useState(null);
   const [userId, setUserId] = useState(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [firestoreLoading, setFirestoreLoading] = useState(false);
@@ -152,14 +153,20 @@ function App() {
     setLanguage(prevLang => prevLang === 'en' ? 'he' : 'en');
   };
 
+  const firebaseEnabled = firebaseConfig && firebaseConfig.projectId;
+
   // --- Firebase Initialization and Auth ---
   useEffect(() => {
+    if (!firebaseEnabled) {
+      console.warn('Firebase config missing; skipping initialization.');
+      return;
+    }
+
     try {
       const app = initializeApp(firebaseConfig);
       const firestore = getFirestore(app);
       const authentication = getAuth(app);
       setDb(firestore);
-      setAuth(authentication);
 
       const unsubscribe = onAuthStateChanged(authentication, async (user) => {
         if (user) {
@@ -191,7 +198,7 @@ function App() {
       console.error("Firebase initialization error:", error);
       setFirestoreError(`${t("Firebase init failed:", language)} ${error.message}`);
     }
-  }, [firebaseConfig, initialAuthToken, language]);
+  }, [firebaseConfig, initialAuthToken, language, firebaseEnabled]);
 
   // --- Firestore Data Fetching (Store Layout & Saved Lists) ---
   useEffect(() => {
@@ -268,9 +275,9 @@ function App() {
 
     rawShoppingList.forEach(item => {
       // Find a section where the item (case-insensitive) matches any part of the layout item key
-      const foundSection = Object.entries(storeLayout).find(([layoutItemKey, layoutSectionName]) =>
-        item.toLowerCase().includes(layoutItemKey.toLowerCase())
-      );
+    const foundSection = Object.entries(storeLayout).find(([layoutItemKey]) =>
+      item.toLowerCase().includes(layoutItemKey.toLowerCase())
+    );
 
       if (foundSection) {
         const sectionName = foundSection[1];
@@ -577,7 +584,7 @@ ${rawShoppingList.join('\n')}`;
           });
 
           await setDoc(userLayoutDocRef, { sections: updatedLayout, userId: userId }, { merge: true });
-          setLayoutMessage(t('Auto-mapping complete! Review and adjust in \"Store Layout\" section.', language));
+          setLayoutMessage(t('Auto-mapping complete! Review and adjust in "Store Layout" section.', language));
           sortShoppingList(); // Re-sort the list after auto-mapping
         } else {
           setAutoMappingError(t('AI returned unexpected format for auto-mapping.', language));
@@ -736,7 +743,7 @@ ${rawShoppingList.join('\n')}`;
       window.gsap.to(cursor, {
         x: e.clientX,
         y: e.clientY,
-        duration: 0.1,
+        duration: 0.05,
         ease: 'power2.out',
         overwrite: 'auto'
       });
@@ -819,7 +826,7 @@ ${rawShoppingList.join('\n')}`;
   }, []);
 
   return (
-    <div className={`min-h-screen font-inter transition-colors duration-500 ${darkMode ? 'bg-gray-950 text-gray-100' : 'bg-gray-50 text-gray-900'}`} dir={language === 'he' ? 'rtl' : 'ltr'}>
+    <div className={`min-h-screen font-inter transition-colors duration-500 overflow-x-hidden ${darkMode ? 'bg-gray-950 text-gray-100' : 'bg-gray-50 text-gray-900'}`} dir={language === 'he' ? 'rtl' : 'ltr'}>
       {/* Dynamic Cursor */}
       <div
         ref={cursorRef}
@@ -828,7 +835,7 @@ ${rawShoppingList.join('\n')}`;
       ></div>
 
       {/* Header */}
-      <header className="relative z-10 p-6 flex justify-between items-center max-w-7xl mx-auto">
+      <header dir="ltr" className="relative z-10 p-6 flex justify-between items-center max-w-7xl mx-auto">
         <div className="text-2xl font-bold flex items-center gap-2">
           {/* ShoppingCart Icon */}
           <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`w-7 h-7 ${darkMode ? 'text-cyan-400' : 'text-purple-600'}`}><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
