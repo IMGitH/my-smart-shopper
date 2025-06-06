@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import * as THREE from 'three';
 
 /* global __app_id, __firebase_config, __initial_auth_token */
@@ -13,7 +13,7 @@ const translations = {
   "SmartShopper": { "en": "SmartShopper", "he": "קניות חכמות" },
   "Manage List": { "en": "Manage List", "he": "ניהול רשימה" },
   "Store Layout": { "en": "Store Layout", "he": "מפת חנות" },
-  "Smart Shopping, Simplified.": { "en": "Smart Shopping, Simplified.", "he": "Smart Shopping, Simplified." },
+  "Smart Shopping, Simplified.": { "en": "Smart Shopping, Simplified.", "he": "עוזר הקניות האישי שלך" },
   "Organize your groceries by store section for a faster, smarter trip.": { "en": "Organize your groceries by store section for a faster, smarter trip.", "he": "ארגן את הקניות שלך לפי מדורים בחנות לטיול מהיר וחכם יותר." },
   "Start Shopping": { "en": "Start Shopping", "he": "התחל לקנות" },
   "Your Smart Shopping List": { "en": "Your Smart Shopping List", "he": "רשימת הקניות החכמה שלך" },
@@ -154,6 +154,7 @@ function App() {
   };
 
   const firebaseEnabled = firebaseConfig && firebaseConfig.projectId;
+  const firestoreReady = useMemo(() => db && userId && isAuthReady, [db, userId, isAuthReady]);
 
   // --- Firebase Initialization and Auth ---
   useEffect(() => {
@@ -397,7 +398,7 @@ function App() {
 
   // --- Firestore Operations for Store Layout and Saved Lists ---
   const updateStoreLayout = useCallback(async () => {
-    if (!db || !userId) {
+    if (!firestoreReady) {
       setLayoutMessage(t('Firestore not ready. Please wait for authentication.', language));
       return;
     }
@@ -429,7 +430,7 @@ function App() {
   }, [db, userId, appId, layoutItem, layoutSection, sortShoppingList, language]);
 
   const saveCurrentList = useCallback(async () => {
-    if (!db || !userId) {
+    if (!firestoreReady) {
       setLayoutMessage(t('Firestore not ready. Please wait for authentication.', language));
       return;
     }
@@ -465,7 +466,7 @@ function App() {
   }, [db, userId, appId, newListName, rawShoppingList, boughtItems, language]);
 
   const loadSelectedList = useCallback(async (listId) => {
-    if (!db || !userId) {
+    if (!firestoreReady) {
       setLayoutMessage(t('Firestore not ready. Please wait for authentication.', language));
       return;
     }
@@ -495,7 +496,7 @@ function App() {
   }, [db, userId, appId, language]);
 
   const deleteSavedList = useCallback(async (listId) => {
-    if (!db || !userId) {
+    if (!firestoreReady) {
       setLayoutMessage(t('Firestore not ready. Please wait for authentication.', language));
       return;
     }
@@ -520,7 +521,7 @@ function App() {
       setAutoMappingError(t('No items in list to suggest layout for.', language));
       return;
     }
-    if (!db || !userId) {
+    if (!firestoreReady) {
       setAutoMappingError(t('Firestore not ready for auto-mapping. Please wait for authentication.', language));
       return;
     }
@@ -552,13 +553,11 @@ ${rawShoppingList.join('\n')}`;
           }
         }
       };
-      const apiKey = ""; // Canvas will automatically provide the API key at runtime
-      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+      const response = await fetch("/autoMapItems", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt })
       });
 
       const result = await response.json();
@@ -939,7 +938,7 @@ ${rawShoppingList.join('\n')}`;
               <div className="grid grid-cols-1 gap-4">
                 <button
                   onClick={autoMapItems} // New button for auto-mapping
-                  disabled={loadingAutoMapping || rawShoppingList.length === 0}
+                  disabled={!firestoreReady || loadingAutoMapping || rawShoppingList.length === 0}
                   className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 ${loadingAutoMapping || rawShoppingList.length === 0 ? 'opacity-60 cursor-not-allowed' : (darkMode ? 'bg-green-600 text-white hover:bg-green-500' : 'bg-teal-600 text-white hover:bg-teal-500')}`}
                 >
                   {/* Sparkles Icon for AI suggestion */}
@@ -1104,7 +1103,7 @@ ${rawShoppingList.join('\n')}`;
             />
             <button
               onClick={updateStoreLayout}
-              disabled={firestoreLoading}
+              disabled={!firestoreReady || firestoreLoading}
               className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 ${firestoreLoading ? 'opacity-60 cursor-not-allowed' : (darkMode ? 'bg-cyan-600 text-white hover:bg-cyan-500' : 'bg-purple-700 text-white hover:bg-purple-600')}`}
             >
               {/* Plus Icon */}
@@ -1150,7 +1149,7 @@ ${rawShoppingList.join('\n')}`;
               </button>
               <button
                 onClick={saveCurrentList}
-                disabled={firestoreLoading}
+                disabled={!firestoreReady || firestoreLoading}
                 className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 ${firestoreLoading ? 'opacity-60 cursor-not-allowed' : (darkMode ? 'bg-cyan-600 text-white hover:bg-cyan-500' : 'bg-purple-700 text-white hover:bg-purple-600')}`}
               >
                 {firestoreLoading ? t('Saving...', language) : t('Save', language)}
@@ -1176,12 +1175,14 @@ ${rawShoppingList.join('\n')}`;
                     <div className="flex gap-2">
                       <button
                         onClick={() => loadSelectedList(list.id)}
+                        disabled={!firestoreReady || firestoreLoading}
                         className={`px-4 py-2 rounded-full text-sm font-semibold transition-all duration-300 ${darkMode ? 'bg-cyan-600 text-white hover:bg-cyan-500' : 'bg-purple-700 text-white hover:bg-purple-600'}`}
                       >
                         {t('Load', language)}
                       </button>
                       <button
                         onClick={() => deleteSavedList(list.id)}
+                        disabled={!firestoreReady || firestoreLoading}
                         className={`px-4 py-2 rounded-full text-sm font-semibold transition-all duration-300 ${darkMode ? 'bg-red-700 text-white hover:bg-red-600' : 'bg-red-500 text-white hover:bg-red-600'}`}
                       >
                         {t('Delete', language)}
