@@ -739,6 +739,8 @@ ${rawShoppingList.join('\n')}`;
       return;
     }
 
+    window.gsap.set(cursor, { xPercent: -50, yPercent: -50 });
+
     const onMouseMove = (e) => {
       window.gsap.to(cursor, {
         x: e.clientX,
@@ -830,8 +832,8 @@ ${rawShoppingList.join('\n')}`;
       {/* Dynamic Cursor */}
       <div
         ref={cursorRef}
-        className={`fixed z-50 pointer-events-none w-8 h-8 rounded-full mix-blend-difference opacity-70 transition-transform duration-100 ease-out ${language === 'he' ? 'left-auto right-1/2' : ''} -translate-x-1/2 -translate-y-1/2 ${darkMode ? 'bg-cyan-400' : 'bg-purple-600'}`}
-        style={{ transform: 'translate(-50%, -50%)', willChange: 'transform' }}
+        className={`fixed z-50 pointer-events-none w-8 h-8 rounded-full mix-blend-difference opacity-70 transition-transform duration-100 ease-out ${language === 'he' ? 'left-auto right-1/2' : ''} ${darkMode ? 'bg-cyan-400' : 'bg-purple-600'}`}
+        style={{ willChange: 'transform' }}
       ></div>
 
       {/* Header */}
