@@ -1,3 +1,6 @@
+// Backend endpoint to securely access Gemini API: 
+// secure Gemini proxy. Only backend sees the API key
+
 const functions = require("firebase-functions");
 const fetch = require("node-fetch");
 
