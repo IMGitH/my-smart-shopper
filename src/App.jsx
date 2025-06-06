@@ -13,7 +13,7 @@ const translations = {
   "SmartShopper": { "en": "SmartShopper", "he": "קניות חכמות" },
   "Manage List": { "en": "Manage List", "he": "ניהול רשימה" },
   "Store Layout": { "en": "Store Layout", "he": "מפת חנות" },
-  "Smart Shopping, Simplified.": { "en": "Smart Shopping, Simplified.", "he": "Smart Shopping, Simplified." },
+  "Smart Shopping, Simplified.": { "en": "Smart Shopping, Simplified.", "he": "עוזר הקניות האישי שלך" },
   "Organize your groceries by store section for a faster, smarter trip.": { "en": "Organize your groceries by store section for a faster, smarter trip.", "he": "ארגן את הקניות שלך לפי מדורים בחנות לטיול מהיר וחכם יותר." },
   "Start Shopping": { "en": "Start Shopping", "he": "התחל לקנות" },
   "Your Smart Shopping List": { "en": "Your Smart Shopping List", "he": "רשימת הקניות החכמה שלך" },
