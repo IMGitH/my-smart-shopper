@@ -29,6 +29,8 @@ jobs:
         echo "Current path: $(pwd)"
         echo "Contents:"
         ls -la
+        echo "functions dir content:"
+        ls -la functions || echo "❌ functions/ missing!"
     
     - name: Set up Node.js
       uses: actions/setup-node@v4
