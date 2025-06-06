@@ -3,7 +3,7 @@ import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth'; // Also include auth if you're using it
 
-// Your Firebase configuration (using Vite's environment variables or Canvas injected ones)
+// Your Firebase configuration (using Vite's environment variables or Canvas-injected ones)
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY, // Or __firebase_config.apiKey in Canvas
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
