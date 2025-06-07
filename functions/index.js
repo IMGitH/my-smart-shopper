@@ -21,6 +21,10 @@ async function geminiHandler(req, res) {
 
   try {
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+    if (!GEMINI_API_KEY) {
+      console.error("GEMINI_API_KEY not set");
+      return res.status(500).json({ error: "Missing Gemini API key" });
+    }
     const payload = {
       contents: [
         {
@@ -89,6 +93,10 @@ async function typoHandler(req, res) {
   }
   try {
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+    if (!GEMINI_API_KEY) {
+      console.error("GEMINI_API_KEY not set");
+      return res.status(500).json({ error: "Missing Gemini API key" });
+    }
     const prompt = `Correct spelling mistakes in the following grocery items and return a JSON array of corrected strings. Items: ${items.join(', ')}`;
     const payload = {
       contents: [

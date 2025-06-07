@@ -91,6 +91,12 @@ VITE_FIREBASE_APP_ID="YOUR_FIREBASE_APP_ID"
 # VITE_FIREBASE_MEASUREMENT_ID="YOUR_FIREBASE_MEASUREMENT_ID" # Optional
 ```
 
+For server-side calls to the Gemini API, create a `functions/.env` file:
+
+```bash
+GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
+```
+
 ### 5. Run the Application
 
 ```bash
