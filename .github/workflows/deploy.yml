@@ -69,3 +69,12 @@ jobs:
         entryPoint: .
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+    - name: Debug Gemini response
+      run: |
+        echo "🧠 Testing Gemini endpoint..."
+        RESPONSE=$(curl --silent --show-error --fail -X POST https://${{ secrets.FIREBASE_PROJECT_ID }}.web.app/api/gemini \
+          -H "Content-Type: application/json" \
+          -d '{"prompt": "test"}')
+        echo "🔁 Gemini response:"
+        echo "$RESPONSE"
