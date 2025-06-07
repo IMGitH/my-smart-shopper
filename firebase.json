@@ -1,4 +1,7 @@
 {
+  "functions": {
+    "source": "functions"
+  },
   "hosting": {
     "public": "dist",
     "ignore": [
@@ -10,6 +13,18 @@
       {
         "source": "/autoMapItems",
         "function": "autoMapItems"
+      },
+      {
+        "source": "/api/gemini",
+        "function": "gemini"
+      },
+      {
+        "source": "/api/correctTypos",
+        "function": "correctTypos"
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
       }
     ]
   }

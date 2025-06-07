@@ -91,6 +91,12 @@ VITE_FIREBASE_APP_ID="YOUR_FIREBASE_APP_ID"
 # VITE_FIREBASE_MEASUREMENT_ID="YOUR_FIREBASE_MEASUREMENT_ID" # Optional
 ```
 
+For server-side calls to the Gemini API, create a `functions/.env` file:
+
+```bash
+GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
+```
+
 ### 5. Run the Application
 
 ```bash
@@ -119,6 +125,10 @@ Access the app at `http://localhost:5173`.
 ## 🤝 Contributing
 
 Feel free to open issues or submit PRs for enhancements or fixes.
+
+## 🚑 Deployment Troubleshooting
+
+If your GitHub Actions deployment fails with errors such as `Permission denied to get service [cloudfunctions.googleapis.com]`, make sure the Cloud Functions API is enabled in your Firebase project and that the service account used in the workflow has permission to deploy functions (e.g. `Cloud Functions Admin` and `Service Usage Consumer`).
 
 ## 📄 License
 
