@@ -10,6 +10,14 @@
       {
         "source": "/autoMapItems",
         "function": "autoMapItems"
+      },
+      {
+        "source": "/api/gemini",
+        "function": "gemini"
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
       }
     ]
   }
