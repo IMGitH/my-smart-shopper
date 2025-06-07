@@ -1,4 +1,6 @@
-// Backend endpoint to securely access Gemini API: 
+/* eslint-env node, commonjs */
+/* global require, exports, process */
+// Backend endpoint to securely access Gemini API:
 // secure Gemini proxy. Only backend sees the API key
 
 const functions = require("firebase-functions");
