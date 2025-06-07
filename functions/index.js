@@ -54,7 +54,19 @@ async function geminiHandler(req, res) {
     );
 
     const result = await response.json();
-    res.status(200).json(result);
+
+    let parsed = null;
+    const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (typeof text === "string") {
+      try {
+        parsed = JSON.parse(text);
+    } catch {
+        // return raw text if it isn't valid JSON
+        parsed = text;
+      }
+    }
+
+    res.status(200).json(parsed ?? result);
   } catch (error) {
     console.error("Gemini API error:", error);
     res.status(500).json({ error: "Gemini API call failed" });
@@ -96,7 +108,18 @@ async function typoHandler(req, res) {
       }
     );
     const result = await response.json();
-    res.status(200).json(result);
+
+    let parsed = null;
+    const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (typeof text === "string") {
+      try {
+        parsed = JSON.parse(text);
+    } catch {
+        parsed = text;
+      }
+    }
+
+    res.status(200).json(parsed ?? result);
   } catch (error) {
     console.error("Gemini typo API error:", error);
     res.status(500).json({ error: "Gemini API call failed" });

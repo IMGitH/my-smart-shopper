@@ -120,6 +120,10 @@ Access the app at `http://localhost:5173`.
 
 Feel free to open issues or submit PRs for enhancements or fixes.
 
+## 🚑 Deployment Troubleshooting
+
+If your GitHub Actions deployment fails with errors such as `Permission denied to get service [cloudfunctions.googleapis.com]`, make sure the Cloud Functions API is enabled in your Firebase project and that the service account used in the workflow has permission to deploy functions (e.g. `Cloud Functions Admin` and `Service Usage Consumer`).
+
 ## 📄 License
 
 This project is open-source under the MIT License.
