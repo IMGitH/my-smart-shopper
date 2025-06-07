@@ -19,6 +19,10 @@
         "function": "gemini"
       },
       {
+        "source": "/api/correctTypos",
+        "function": "correctTypos"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

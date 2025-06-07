@@ -22,6 +22,7 @@ const translations = {
   "Add Items": { "en": "Add Items", "he": "הוסף פריטים" },
   "Sort by Section": { "en": "Sort by Section", "he": "מיין לפי מדור" },
   "Suggest Layout": { "en": "Suggest Layout", "he": "הצע מפה" },
+  "Correct Typos": { "en": "Correct Typos", "he": "תקן שגיאות" },
   "Save List": { "en": "Save List", "he": "שמור רשימה" },
   "Load List": { "en": "Load List", "he": "טען רשימה" },
   "Clear List": { "en": "Clear List", "he": "נקה רשימה" },
@@ -61,6 +62,7 @@ const translations = {
   "AI returned unexpected format for auto-mapping.": { "en": "AI returned unexpected format for auto-mapping.", "he": "ה-AI החזיר פורמט בלתי צפוי למיפוי אוטומטי." },
   "Could not auto-map items. Unexpected AI response.": { "en": "Could not auto-map items. Unexpected AI response.", "he": "לא ניתן למפות פריטים אוטומטית. תגובת AI בלתי צפויה." },
   "Auto-mapping failed:": { "en": "Auto-mapping failed:", "he": "מיפוי אוטומטי נכשל:" },
+  "Typo correction failed:": { "en": "Typo correction failed:", "he": "תיקון שגיאות נכשל:" },
   "Auto-mapping complete! Review and adjust in \"Store Layout\" section.": { "en": "Auto-mapping complete! Review and adjust in \"Store Layout\" section.", "he": "מיפוי אוטומטי הושלם! סקור והתאם במדור \"מפת חנות\"." },
   "Saving...": { "en": "Saving...", "he": "שומר..." },
   "Suggesting Layout...": { "en": "Suggesting Layout...", "he": "מציע מפה..." },
@@ -495,6 +497,39 @@ function App() {
     }
   }, [db, userId, appId, language]);
 
+  // --- Gemini API Call for Typo Correction (NEW) ---
+  const correctTypos = useCallback(async () => {
+    const items = shoppingListInput.split('\n').map(i => i.trim()).filter(Boolean);
+    if (items.length === 0) return;
+
+    setLoadingAutoMapping(true);
+    setAutoMappingError('');
+    try {
+      const response = await fetch('/api/correctTypos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items })
+      });
+      const result = await response.json();
+      if (
+        result.candidates &&
+        result.candidates[0]?.content?.parts?.length > 0
+      ) {
+        const corrected = JSON.parse(result.candidates[0].content.parts[0].text);
+        if (Array.isArray(corrected)) {
+          setShoppingListInput(corrected.join('\n'));
+        }
+      } else {
+        setAutoMappingError(t('Could not auto-map items. Unexpected AI response.', language));
+      }
+    } catch (error) {
+      setAutoMappingError(`${t('Typo correction failed:', language)} ${error.message}`);
+      console.error('Typo correction error:', error);
+    } finally {
+      setLoadingAutoMapping(false);
+    }
+  }, [shoppingListInput, language]);
+
   const deleteSavedList = useCallback(async (listId) => {
     if (!firestoreReady) {
       setLayoutMessage(t('Firestore not ready. Please wait for authentication.', language));
@@ -917,6 +952,15 @@ ${rawShoppingList.join('\n')}`;
 
               {/* AI Features */}
               <div className="grid grid-cols-1 gap-4">
+                <button
+                  onClick={correctTypos}
+                  disabled={loadingAutoMapping || shoppingListInput.trim() === ''}
+                  className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 ${loadingAutoMapping || shoppingListInput.trim() === '' ? 'opacity-60 cursor-not-allowed' : (darkMode ? 'bg-blue-600 text-white hover:bg-blue-500' : 'bg-blue-500 text-white hover:bg-blue-400')}`}
+                >
+                  {/* Edit Icon */}
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block mr-2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                  {t('Correct Typos', language)}
+                </button>
                 <button
                   onClick={autoMapItems} // New button for auto-mapping
                   disabled={!firestoreReady || loadingAutoMapping || rawShoppingList.length === 0}
