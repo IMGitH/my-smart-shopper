@@ -1,10 +1,12 @@
-// Backend endpoint to securely access Gemini API: 
+/* eslint-env node, commonjs */
+/* global require, exports, process */
+// Backend endpoint to securely access Gemini API:
 // secure Gemini proxy. Only backend sees the API key
 
 const functions = require("firebase-functions");
 const fetch = require("node-fetch");
 
-exports.autoMapItems = functions.https.onRequest(async (req, res) => {
+async function geminiHandler(req, res) {
   const { prompt } = req.body;
 
   if (!prompt) {
@@ -32,4 +34,7 @@ exports.autoMapItems = functions.https.onRequest(async (req, res) => {
     console.error("Gemini API error:", error);
     res.status(500).json({ error: "Gemini API call failed" });
   }
-});
+}
+
+exports.autoMapItems = functions.https.onRequest(geminiHandler);
+exports.gemini = functions.https.onRequest(geminiHandler);

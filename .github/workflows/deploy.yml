@@ -58,7 +58,6 @@ jobs:
     - name: Deploy to Firebase (Preview or Production)
       uses: FirebaseExtended/action-hosting-deploy@v0
       with:
-        repoToken: "${{ secrets.GITHUB_TOKEN }}"
         firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}"
         projectId: my-smart-shopper-e0c23
         channelId: >-
@@ -70,3 +69,12 @@ jobs:
         entryPoint: .
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+    - name: Debug Gemini response
+      run: |
+        echo "🧠 Testing Gemini endpoint..."
+        RESPONSE=$(curl --silent --show-error --fail -X POST https://${{ secrets.FIREBASE_PROJECT_ID }}.web.app/api/gemini \
+          -H "Content-Type: application/json" \
+          -d '{"prompt": "test"}')
+        echo "🔁 Gemini response:"
+        echo "$RESPONSE"
