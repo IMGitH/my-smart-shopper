@@ -1,4 +1,4 @@
-name: Deploy to Firebase Hosting and Functions
+name: Deploy to Firebase Hosting and Cloud Run
 
 on:
   pull_request:
@@ -49,9 +49,28 @@ jobs:
         VITE_FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
         VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
 
-    - name: Install Firebase Functions dependencies
-      working-directory: functions
-      run: npm install
+    - name: Build Docker image
+      run: |
+        docker build -t $REGION-docker.pkg.dev/$PROJECT_ID/$REPO/image-name .
+        echo "Pushing image"
+        docker push $REGION-docker.pkg.dev/$PROJECT_ID/$REPO/image-name
+      env:
+        PROJECT_ID: ${{ secrets.PROJECT_ID }}
+        REGION: ${{ secrets.REGION }}
+        REPO: ${{ secrets.REPO }}
+
+    - name: Deploy to Cloud Run
+      run: |
+        gcloud run deploy $SERVICE_NAME \
+          --image $REGION-docker.pkg.dev/$PROJECT_ID/$REPO/image-name \
+          --region $REGION \
+          --platform managed \
+          --allow-unauthenticated
+      env:
+        PROJECT_ID: ${{ secrets.PROJECT_ID }}
+        REGION: ${{ secrets.REGION }}
+        REPO: ${{ secrets.REPO }}
+        SERVICE_NAME: ${{ secrets.SERVICE_NAME }}
 
     - name: Deploy to Firebase (Preview or Production)
       uses: FirebaseExtended/action-hosting-deploy@v0
