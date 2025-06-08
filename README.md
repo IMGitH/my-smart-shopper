@@ -106,13 +106,20 @@ yarn dev
 
 Access the app at `http://localhost:5173`.
 
-## 🛳 Deploying the Backend for Free
+## 🛳 Deploying the Backend to Cloud Run
 
-The Express server lives in the `/server` folder and can be hosted for free on [Render](https://render.com/).
-Create a new **Web Service** connected to this repository and specify `/server` as the root.
-Set the start command to `npm start` and add the environment variable `GEMINI_API_KEY`.
-After deployment Render will provide a URL like `https://my-shopper.onrender.com`.
-Use that URL in `VITE_BACKEND_URL` so the frontend can reach your API.
+The Express server lives in the `/server` folder and can be deployed directly to
+Cloud Run using source-based deployment (no Dockerfile required). Run:
+
+```bash
+gcloud run deploy backend --source ./server --region us-central1 --allow-unauthenticated
+```
+
+Make sure the `GEMINI_API_KEY` environment variable is configured for the
+service. Once deployment completes Google Cloud will output a URL such as
+`https://backend-abcdef-uc.a.run.app`. Use that address in
+`VITE_BACKEND_URL` (and in the `BACKEND_URL` GitHub secret) so the frontend can
+reach your API.
 
 ## 💡 Usage
 
