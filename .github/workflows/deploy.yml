@@ -71,13 +71,9 @@ jobs:
     - name: Deploy to Firebase (Preview or Production)
       uses: FirebaseExtended/action-hosting-deploy@v0
       with:
-
-    - name: Test deployed Gemini endpoint
-      run: |
-        if [ "${{ github.event_name }}" = "pull_request" ]; then
-          CHANNEL="pr-${{ github.event.number }}"
-        elif [ "${{ inputs.environment }}" = "production" ]; then
-          CHANNEL="live"
+        repoToken: ${{ secrets.GITHUB_TOKEN }}
+        firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        channelId: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.number) || (inputs.environment == 'production' && 'live') || format('preview-{0}', github.run_number) }}
         else
           CHANNEL="preview-${{ github.run_number }}"
         fi
