@@ -73,15 +73,9 @@ jobs:
       with:
         repoToken: ${{ secrets.GITHUB_TOKEN }}
         firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        channelId: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.number) || (inputs.environment == 'production' && 'live') || format('preview-{0}', github.run_number) }}
-        else
-          CHANNEL="preview-${{ github.run_number }}"
-        fi
-
-        if [ "$CHANNEL" = "live" ]; then
-          BASE_URL="https://my-smart-shopper-e0c23.web.app"
-        else
-          BASE_URL="https://${CHANNEL}--my-smart-shopper-e0c23.web.app"
+        channelId: ${{ env.CHANNEL_ID }}
+        CHANNEL_ID: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.number) || (inputs.environment == 'production' && 'live') || format('preview-{0}', github.run_number) }}
+        CHANNEL="${CHANNEL_ID}"
         fi
 
         echo "Pinging $BASE_URL/api/autoMapItems"
