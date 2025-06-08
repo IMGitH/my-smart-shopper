@@ -93,6 +93,9 @@ VITE_FIREBASE_APP_ID="YOUR_FIREBASE_APP_ID"
 VITE_BACKEND_URL="https://your-backend-url"
 ```
 
+For CI deployments, also add a GitHub secret named `BACKEND_URL` with the same
+URL so the build step can configure the frontend correctly.
+
 ### 5. Run the Application
 
 ```bash
