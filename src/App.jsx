@@ -3,6 +3,8 @@ import * as THREE from 'three';
 
 /* global __app_id, __firebase_config, __initial_auth_token */
 
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || '';
+
 // Firebase imports
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
@@ -535,26 +537,8 @@ function App() {
 Items:
 ${rawShoppingList.join('\n')}`;
 
-      const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
-      const payload = {
-        contents: chatHistory,
-        generationConfig: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: "ARRAY",
-            items: {
-              type: "OBJECT",
-              properties: {
-                "item": { "type": "STRING" },
-                "section": { "type": "STRING" }
-              },
-              "propertyOrdering": ["item", "section"]
-            }
-          }
-        }
-      };
 
-      const response = await fetch("/autoMapItems", {
+      const response = await fetch(`${API_BASE_URL}/api/autoMapItems`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt })
