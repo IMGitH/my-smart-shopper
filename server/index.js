@@ -33,6 +33,7 @@ app.post('/api/autoMapItems', async (req, res) => {
     );
 
     const result = await response.json();
+    console.log('Gemini response:', JSON.stringify(result));
     res.status(200).json(result);
   } catch (error) {
     console.error('Gemini API error:', error);
