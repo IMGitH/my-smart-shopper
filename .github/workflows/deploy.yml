@@ -19,6 +19,8 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      CHANNEL_ID: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.number) || (inputs.environment == 'production' && 'live') || format('preview-{0}', github.run_number) }}
 
     steps:
     - name: Checkout code
@@ -74,7 +76,6 @@ jobs:
         repoToken: ${{ secrets.GITHUB_TOKEN }}
         firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         channelId: ${{ env.CHANNEL_ID }}
-        CHANNEL_ID: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.number) || (inputs.environment == 'production' && 'live') || format('preview-{0}', github.run_number) }}
         CHANNEL="${CHANNEL_ID}"
         fi
 
