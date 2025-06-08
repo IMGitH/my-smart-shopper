@@ -101,6 +101,18 @@ yarn dev
 
 Access the app at `http://localhost:5173`.
 
+## 🛳 Deploying the Backend to Cloud Run
+
+The Express server resides in the `/server` folder. To deploy it using Cloud Run's
+source-based workflow, run:
+
+```bash
+gcloud run deploy backend --source ./server --region us-central1 --allow-unauthenticated
+```
+
+The service name `backend` matches the Firebase Hosting rewrite that forwards `/api/**`
+requests to your Cloud Run instance.
+
 ## 💡 Usage
 
 - **Add Items**: Type grocery items, one per line, then click "Add Items".

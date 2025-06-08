@@ -536,7 +536,7 @@ Items:
 ${rawShoppingList.join('\n')}`;
 
 
-      const response = await fetch("/autoMapItems", {
+      const response = await fetch("/api/autoMapItems", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt })

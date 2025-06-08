@@ -1,4 +1,4 @@
-name: Deploy to Firebase Hosting and Functions
+name: Deploy to Firebase Hosting and Cloud Run
 
 on:
   pull_request:
@@ -51,8 +51,8 @@ jobs:
         VITE_FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
         VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
 
-    - name: Install Firebase Functions dependencies
-      working-directory: functions
+    - name: Install server dependencies
+      working-directory: server
       run: npm install
 
     - name: Deploy to Firebase (Preview or Production)
