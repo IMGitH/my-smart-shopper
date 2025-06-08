@@ -8,8 +8,8 @@
     ],
     "rewrites": [
       {
-        "source": "/autoMapItems",
-        "function": "autoMapItems"
+        "source": "/api/**",
+        "destination": "https://your-backend.onrender.com/api/"
       }
     ]
   }

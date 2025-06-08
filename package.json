@@ -4,14 +4,19 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "node server/index.js",
+    "dev:client": "vite",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
     "firebase": "^11.8.1",
     "gsap": "^3.13.0",
+    "node-fetch": "^2.6.9",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "three": "^0.176.0"
