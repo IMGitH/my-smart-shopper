@@ -68,8 +68,6 @@ jobs:
         kill $PID
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-
-
     - name: Deploy to Firebase (Preview or Production)
       uses: FirebaseExtended/action-hosting-deploy@v0
       with:
