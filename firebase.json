@@ -8,8 +8,14 @@
     ],
     "rewrites": [
       {
-        "source": "/autoMapItems",
-        "function": "autoMapItems"
+        "source": "/api/**",
+        "run": {
+          "serviceId": "cloud-run-service-name",
+          "region": "REGION",
+          "local": {
+            "port": 8080
+          }
+        }
       }
     ]
   }

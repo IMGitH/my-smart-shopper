@@ -535,26 +535,7 @@ function App() {
 Items:
 ${rawShoppingList.join('\n')}`;
 
-      const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
-      const payload = {
-        contents: chatHistory,
-        generationConfig: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: "ARRAY",
-            items: {
-              type: "OBJECT",
-              properties: {
-                "item": { "type": "STRING" },
-                "section": { "type": "STRING" }
-              },
-              "propertyOrdering": ["item", "section"]
-            }
-          }
-        }
-      };
-
-      const response = await fetch("/autoMapItems", {
+      const response = await fetch("/api/autoMapItems", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt })
