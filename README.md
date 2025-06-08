@@ -89,6 +89,8 @@ VITE_FIREBASE_STORAGE_BUCKET="YOUR_FIREBASE_STORAGE_BUCKET"
 VITE_FIREBASE_MESSAGING_SENDER_ID="YOUR_FIREBASE_MESSAGING_SENDER_ID"
 VITE_FIREBASE_APP_ID="YOUR_FIREBASE_APP_ID"
 # VITE_FIREBASE_MEASUREMENT_ID="YOUR_FIREBASE_MEASUREMENT_ID" # Optional
+# Base URL of your deployed backend (e.g., https://my-shopper.onrender.com)
+VITE_BACKEND_URL="https://your-backend-url"
 ```
 
 ### 5. Run the Application
@@ -101,17 +103,13 @@ yarn dev
 
 Access the app at `http://localhost:5173`.
 
-## 🛳 Deploying the Backend to Cloud Run
+## 🛳 Deploying the Backend for Free
 
-The Express server resides in the `/server` folder. To deploy it using Cloud Run's
-source-based workflow, run:
-
-```bash
-gcloud run deploy backend --source ./server --region us-central1 --allow-unauthenticated
-```
-
-The service name `backend` matches the Firebase Hosting rewrite that forwards `/api/**`
-requests to your Cloud Run instance.
+The Express server lives in the `/server` folder and can be hosted for free on [Render](https://render.com/).
+Create a new **Web Service** connected to this repository and specify `/server` as the root.
+Set the start command to `npm start` and add the environment variable `GEMINI_API_KEY`.
+After deployment Render will provide a URL like `https://my-shopper.onrender.com`.
+Use that URL in `VITE_BACKEND_URL` so the frontend can reach your API.
 
 ## 💡 Usage
 

@@ -3,6 +3,8 @@ import * as THREE from 'three';
 
 /* global __app_id, __firebase_config, __initial_auth_token */
 
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || '';
+
 // Firebase imports
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
@@ -536,7 +538,7 @@ Items:
 ${rawShoppingList.join('\n')}`;
 
 
-      const response = await fetch("/api/autoMapItems", {
+      const response = await fetch(`${API_BASE_URL}/api/autoMapItems`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt })
