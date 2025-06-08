@@ -101,6 +101,30 @@ yarn dev
 
 Access the app at `http://localhost:5173`.
 
+## 🚀 Deploying the Backend to Render
+
+1. **Create a Web Service** on [Render](https://render.com) and connect this repository.
+   - Choose either the **Docker** environment (uses the provided `Dockerfile`) or the
+     **Node** environment with the start command `node server/index.js`.
+2. **Set Environment Variables** in the Render dashboard:
+   - `GEMINI_API_KEY` – your Gemini API key.
+   - Any other variables required by your server.
+3. After deployment, note the service URL (e.g. `https://your-backend.onrender.com`).
+   Update `firebase.json` as shown below so Firebase Hosting forwards `/api` requests
+   to your Render backend:
+
+```json
+"rewrites": [
+  {
+    "source": "/api/**",
+    "destination": "https://your-backend.onrender.com/api/"
+  }
+]
+```
+
+Deploys can be automated using the `johnagan/render-deploy-action` GitHub Action, which
+requires `RENDER_SERVICE_ID` and `RENDER_API_KEY` secrets.
+
 ## 💡 Usage
 
 - **Add Items**: Type grocery items, one per line, then click "Add Items".
