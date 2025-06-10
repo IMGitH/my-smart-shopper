@@ -9,7 +9,7 @@
     "rewrites": [
       {
         "source": "/api/**",
-        "destination": "https://my-smart-shopper.onrender.com/api/"
+        "destination": "https://my-smart-shopper-api.onrender.com/api/"
       },
       {
         "source": "**",
