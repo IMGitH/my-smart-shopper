@@ -9,7 +9,8 @@
     "rewrites": [
       {
         "source": "/api/**",
-        "destination": "https://my-smart-shopper-api.onrender.com/api/"
+        "redirect": "https://my-smart-shopper-api.onrender.com/api/",
+        "type": 302
       },
       {
         "source": "**",
