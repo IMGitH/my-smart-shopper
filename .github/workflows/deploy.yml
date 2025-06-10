@@ -82,8 +82,18 @@ jobs:
           BASE_URL="https://${CHANNEL}--my-smart-shopper-e0c23.web.app"
         fi
 
-        echo "Pinging $BASE_URL/api/autoMapItems"
-        curl -s -X POST "$BASE_URL/api/autoMapItems" \
-          -H 'Content-Type: application/json' \
-          -d '{"prompt":"test"}' || true
-
+        echo "🔄 Pinging $BASE_URL/api/autoMapItems"
+        RESPONSE=$(curl -s -X POST "$BASE_URL/api/autoMapItems" \
+          -H "Content-Type: application/json" \
+          -d '{"prompt": "test"}')
+        
+        echo "🔍 Response:"
+        echo "$RESPONSE"
+        
+        # Optionally, check if it contains a Gemini response
+        if echo "$RESPONSE" | grep -q 'candidates'; then
+          echo "✅ API is working as expected"
+        else
+          echo "❌ Unexpected or missing response from API"
+          exit 1
+        fi
