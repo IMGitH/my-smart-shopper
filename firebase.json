@@ -9,10 +9,7 @@
     "rewrites": [
       {
         "source": "/api/**",
-        "run": {
-          "serviceId": "backend",
-          "region": "us-central1"
-        }
+        "destination": "https://my-smart-shopper.onrender.com/api/"
       },
       {
         "source": "**",
