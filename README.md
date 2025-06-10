@@ -89,7 +89,12 @@ VITE_FIREBASE_STORAGE_BUCKET="YOUR_FIREBASE_STORAGE_BUCKET"
 VITE_FIREBASE_MESSAGING_SENDER_ID="YOUR_FIREBASE_MESSAGING_SENDER_ID"
 VITE_FIREBASE_APP_ID="YOUR_FIREBASE_APP_ID"
 # VITE_FIREBASE_MEASUREMENT_ID="YOUR_FIREBASE_MEASUREMENT_ID" # Optional
+# Base URL of your deployed backend (e.g., https://my-shopper.onrender.com)
+VITE_BACKEND_URL="https://your-backend-url"
 ```
+
+For CI deployments, also add a GitHub secret named `BACKEND_URL` with the same
+URL so the build step can configure the frontend correctly.
 
 ### 5. Run the Application
 
@@ -100,6 +105,21 @@ yarn dev
 ```
 
 Access the app at `http://localhost:5173`.
+
+## 🛳 Deploying the Backend to Cloud Run
+
+The Express server lives in the `/server` folder and can be deployed directly to
+Cloud Run using source-based deployment (no Dockerfile required). Run:
+
+```bash
+gcloud run deploy backend --source ./server --region us-central1 --allow-unauthenticated
+```
+
+Make sure the `GEMINI_API_KEY` environment variable is configured for the
+service. Once deployment completes Google Cloud will output a URL such as
+`https://backend-abcdef-uc.a.run.app`. Use that address in
+`VITE_BACKEND_URL` (and in the `BACKEND_URL` GitHub secret) so the frontend can
+reach your API.
 
 ## 💡 Usage
 

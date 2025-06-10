@@ -8,8 +8,12 @@
     ],
     "rewrites": [
       {
-        "source": "/autoMapItems",
-        "function": "autoMapItems"
+        "source": "/api/**",
+        "destination": "https://my-smart-shopper.onrender.com/api/"
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
       }
     ]
   }
