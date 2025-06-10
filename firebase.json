@@ -6,12 +6,14 @@
       "**/.*",
       "**/node_modules/**"
     ],
-    "rewrites": [
+    "redirects": [
       {
         "source": "/api/**",
-        "redirect": "https://my-smart-shopper-api.onrender.com/api/",
+        "destination": "https://my-smart-shopper-api.onrender.com/api/",
         "type": 302
-      },
+      }
+    ],
+    "rewrites": [
       {
         "source": "**",
         "destination": "/index.html"
