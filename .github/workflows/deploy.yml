@@ -72,14 +72,13 @@ jobs:
       run: npm install -g firebase-tools
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+    
     - name: Authenticate and Deploy Production
       if: (github.event_name == 'workflow_dispatch' && inputs.environment == 'production') || (github.event_name != 'pull_request' && github.ref == 'refs/heads/main')
       run: |
         # Write the service account key to a temporary file
         echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" > /tmp/firebase-service-account.json
-        # Set the GOOGLE_APPLICATION_CREDENTIALS environment variable
-        export GOOGLE_APPLICATION_CREDENTIALS="/tmp/firebase-service-account.json"
-        
+        # Set the GOOGLE_APPLICATION_CREDENTIALS environment variable   
         echo "🚀 Deploying to Firebase Production (my-smart-shopper-e0c23)..."
         # Execute the firebase deploy command
         firebase deploy --project my-smart-shopper-e0c23 --only hosting
@@ -89,6 +88,7 @@ jobs:
         rm /tmp/firebase-service-account.json
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }} # Keep if your app needs it at runtime for hosting rewrites/functions
+        GOOGLE_APPLICATION_CREDENTIALS: /tmp/firebase-service-account.json
 
 
     - name: Test deployed Gemini endpoint
