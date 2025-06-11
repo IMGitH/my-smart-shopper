@@ -57,7 +57,6 @@ jobs:
         projectId: my-smart-shopper-e0c23
         entryPoint: .
         channelId: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('preview-{0}', github.run_number) }}
-        target: live
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
@@ -70,7 +69,6 @@ jobs:
         projectId: my-smart-shopper-e0c23
         entryPoint: .
         channelId: live
-        target: live
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
