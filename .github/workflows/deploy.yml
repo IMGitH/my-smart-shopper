@@ -48,9 +48,13 @@ jobs:
         VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
         VITE_BACKEND_URL: ${{ secrets.VITE_BACKEND_URL }}
 
+    - name: Debug Channel ID
+      run: |
+        echo "Channel ID calculated: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('preview-{0}', github.run_number) }}"
+
     - name: Deploy to Firebase Preview (PR or manual)
       if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'preview')
-      uses: FirebaseExtended/action-hosting-deploy@v0
+      uses: FirebaseExtended/action-hosting-deploy@v0.9.0
       with:
         repoToken: ${{ github.token }}
         firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
@@ -67,7 +71,7 @@ jobs:
 
     - name: Deploy to Firebase Production (manual or main)
       if: (github.event_name == 'workflow_dispatch' && inputs.environment == 'production') || (github.event_name != 'pull_request' && github.ref == 'refs/heads/main')
-      uses: FirebaseExtended/action-hosting-deploy@v0
+      uses: FirebaseExtended/action-hosting-deploy@v0.9.0
       with:
         repoToken: ${{ github.token }}
         firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
