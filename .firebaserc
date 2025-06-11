@@ -1,0 +1,12 @@
+{
+  "projects": {
+    "default": "my-smart-shopper-e0c23"
+  },
+  "targets": {
+    "my-smart-shopper-e0c23": {
+      "hosting": {
+        "live": ["my-smart-shopper-e0c23"]
+      }
+    }
+  }
+}
