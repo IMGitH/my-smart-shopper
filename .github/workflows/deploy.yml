@@ -19,6 +19,10 @@ on:
 permissions:
   checks: write
   contents: read  # required by actions/checkout
+  # Add id-token write permission for secure OIDC authentication if using firebase-tools directly
+  # This is a more modern way to authenticate compared to service account file for direct CLI.
+  # If you prefer the service account JSON file, keep it but ensure FIREBASE_SERVICE_ACCOUNT is correctly used.
+  id-token: write # Required for Google Cloud OIDC federation
 
 jobs:
   deploy:
@@ -37,7 +41,7 @@ jobs:
       run: npm install
 
     - name: Build React app with Firebase config
-      run: npm run build
+      run: npm install && npm run build # Ensure npm install is run before build
       env:
         VITE_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
         VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
@@ -48,46 +52,57 @@ jobs:
         VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
         VITE_BACKEND_URL: ${{ secrets.VITE_BACKEND_URL }}
 
-    - name: Debug Channel ID
-      run: |
-        echo "Channel ID calculated: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('preview-{0}', github.run_number) }}"
-
-    - name: Deploy to Firebase Preview (PR or manual)
+    # Step for Preview Deployments (using the action)
+    - name: Deploy to Firebase Preview (PR or manual preview)
       if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'preview')
-      uses: FirebaseExtended/action-hosting-deploy@v0.9.0
+      uses: FirebaseExtended/action-hosting-deploy@v0.9.0 # Explicitly use v0.9.0
       with:
         repoToken: ${{ github.token }}
-        firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }} # This secret is still used by the action
         projectId: my-smart-shopper-e0c23
         entryPoint: .
-        # The channelId should be the first argument to hosting:channel:deploy.
-        # The action-hosting-deploy handles this internally, but it's important that
-        # the 'channelId' input is correctly provided to the action.
-        # The existing format for channelId is correct for the action.
-        # The issue was how the action interpreted it combined with 'target'.
         channelId: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('preview-{0}', github.run_number) }}
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
-    - name: Deploy to Firebase Production (manual or main)
+    # Step for Production Deployments (direct firebase-tools CLI)
+    - name: Deploy to Firebase Production (manual production or main branch push)
       if: (github.event_name == 'workflow_dispatch' && inputs.environment == 'production') || (github.event_name != 'pull_request' && github.ref == 'refs/heads/main')
-      uses: FirebaseExtended/action-hosting-deploy@v0.9.0
-      with:
-        repoToken: ${{ github.token }}
-        firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        projectId: my-smart-shopper-e0c23
-        entryPoint: .
+      # Install firebase-tools
+      run: npm install -g firebase-tools
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+    - name: Authenticate and Deploy Production
+      if: (github.event_name == 'workflow_dispatch' && inputs.environment == 'production') || (github.event_name != 'pull_request' && github.ref == 'refs/heads/main')
+      run: |
+        # Write the service account key to a temporary file
+        echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" > /tmp/firebase-service-account.json
+        # Set the GOOGLE_APPLICATION_CREDENTIALS environment variable
+        export GOOGLE_APPLICATION_CREDENTIALS="/tmp/firebase-service-account.json"
+        
+        echo "🚀 Deploying to Firebase Production (my-smart-shopper-e0c23)..."
+        # Execute the firebase deploy command
+        firebase deploy --project my-smart-shopper-e0c23 --only hosting
+        echo "✅ Production deployment complete."
+
+        # Clean up the temporary file (optional but good practice)
+        rm /tmp/firebase-service-account.json
+      env:
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }} # Keep if your app needs it at runtime for hosting rewrites/functions
+
 
     - name: Test deployed Gemini endpoint
+      # This step needs to run after either deploy completes.
+      # You might want to adjust its 'if' condition if tests are not always desired.
       run: |
-        # Ensure the BASE_URL correctly picks up the preview channel ID
+        # Determine the base URL based on the deployment type
         if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-          BASE_URL="https://pr-${{ github.event.pull_request.number }}--my-smart-shopper-e0c23.web.app"
+          CHANNEL_ID="pr-${{ github.event.pull_request.number }}"
+          BASE_URL="https://${CHANNEL_ID}--my-smart-shopper-e0c23.web.app"
         elif [[ "${{ github.event_name }}" == "workflow_dispatch" && inputs.environment == "preview" ]]; then
-          BASE_URL="https://preview-${{ github.run_number }}--my-smart-shopper-e0c23.web.app"
-        else
+          CHANNEL_ID="preview-${{ github.run_number }}"
+          BASE_URL="https://${CHANNEL_ID}--my-smart-shopper-e0c23.web.app"
+        else # This covers workflow_dispatch production or main branch push (production)
           BASE_URL="https://my-smart-shopper-e0c23.web.app"
         fi
 
@@ -105,3 +120,4 @@ jobs:
           echo "❌ Unexpected or missing response from API"
           exit 1
         fi
+
