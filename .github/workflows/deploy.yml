@@ -56,8 +56,12 @@ jobs:
         firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         projectId: my-smart-shopper-e0c23
         entryPoint: .
+        # The channelId should be the first argument to hosting:channel:deploy.
+        # The action-hosting-deploy handles this internally, but it's important that
+        # the 'channelId' input is correctly provided to the action.
+        # The existing format for channelId is correct for the action.
+        # The issue was how the action interpreted it combined with 'target'.
         channelId: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('preview-{0}', github.run_number) }}
-        # Removed 'target: live' as it's not needed for preview channel deployments on a single site.
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
@@ -74,6 +78,7 @@ jobs:
 
     - name: Test deployed Gemini endpoint
       run: |
+        # Ensure the BASE_URL correctly picks up the preview channel ID
         if [[ "${{ github.event_name }}" == "pull_request" ]]; then
           BASE_URL="https://pr-${{ github.event.pull_request.number }}--my-smart-shopper-e0c23.web.app"
         elif [[ "${{ github.event_name }}" == "workflow_dispatch" && inputs.environment == "preview" ]]; then
