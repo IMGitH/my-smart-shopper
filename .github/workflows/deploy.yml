@@ -18,26 +18,16 @@ on:
 
 permissions:
   checks: write
-  contents: read  # needed for actions/checkout
+  contents: read  # required by actions/checkout
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    env:
-      CHANNEL_ID: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.number) || (inputs.environment == 'production' && 'live') || format('preview-{0}', github.run_number) }}
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-    
-    - name: Debug workspace structure
-      run: |
-        echo "Current path: $(pwd)"
-        echo "Contents:"
-        ls -la
-        echo "server dir content:"
-        ls -la server || echo "❌ server/ missing!"
-    
+
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
@@ -58,24 +48,21 @@ jobs:
         VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
         VITE_BACKEND_URL: ${{ secrets.VITE_BACKEND_URL }}
 
-    - name: Check build output
-      run: ls -la dist && ls -la dist/index.html
-
-    - name: Deploy to Firebase Preview (Pull Request)
-      if: github.event_name == 'pull_request'
+    - name: Deploy to Firebase Preview (PR or manual)
+      if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'preview')
       uses: FirebaseExtended/action-hosting-deploy@v0
       with:
         repoToken: ${{ github.token }}
         firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         projectId: my-smart-shopper-e0c23
         entryPoint: .
-        channelId: pr-${{ github.event.pull_request.number }}
+        channelId: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('preview-{0}', github.run_number) }}
         target: live
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
-    - name: Deploy to Firebase Production
-      if: github.event_name != 'pull_request'
+    - name: Deploy to Firebase Production (manual or main)
+      if: (github.event_name == 'workflow_dispatch' && inputs.environment == 'production') || (github.event_name != 'pull_request' && github.ref == 'refs/heads/main')
       uses: FirebaseExtended/action-hosting-deploy@v0
       with:
         repoToken: ${{ github.token }}
@@ -84,25 +71,25 @@ jobs:
         entryPoint: .
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-    
+
     - name: Test deployed Gemini endpoint
       run: |
-        CHANNEL="${CHANNEL_ID}"
-        if [ "$CHANNEL" = "live" ]; then
-          BASE_URL="https://my-smart-shopper-e0c23.web.app"
+        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          BASE_URL="https://pr-${{ github.event.pull_request.number }}--my-smart-shopper-e0c23.web.app"
+        elif [[ "${{ github.event_name }}" == "workflow_dispatch" && inputs.environment == "preview" ]]; then
+          BASE_URL="https://preview-${{ github.run_number }}--my-smart-shopper-e0c23.web.app"
         else
-          BASE_URL="https://${CHANNEL}--my-smart-shopper-e0c23.web.app"
+          BASE_URL="https://my-smart-shopper-e0c23.web.app"
         fi
 
         echo "🔄 Pinging $BASE_URL/api/autoMapItems"
         RESPONSE=$(curl -s -X POST "$BASE_URL/api/autoMapItems" \
           -H "Content-Type: application/json" \
           -d '{"prompt": "test"}')
-        
+
         echo "🔍 Response:"
         echo "$RESPONSE"
-        
-        # Optionally, check if it contains a Gemini response
+
         if echo "$RESPONSE" | grep -q 'candidates'; then
           echo "✅ API is working as expected"
         else
