@@ -2,9 +2,7 @@ name: Deploy to Firebase Hosting
 
 on:
   pull_request:
-    branches:
-      - main  # Auto-deploy preview for PRs targeting main
-
+    branches: [main]
   workflow_dispatch:
     inputs:
       environment:
@@ -12,17 +10,12 @@ on:
         required: true
         default: 'preview'
         type: choice
-        options:
-          - preview
-          - production
+        options: [preview, production]
 
 permissions:
   checks: write
-  contents: read  # required by actions/checkout
-  # Add id-token write permission for secure OIDC authentication if using firebase-tools directly
-  # This is a more modern way to authenticate compared to service account file for direct CLI.
-  # If you prefer the service account JSON file, keep it but ensure FIREBASE_SERVICE_ACCOUNT is correctly used.
-  id-token: write # Required for Google Cloud OIDC federation
+  contents: read
+  id-token: write  # Needed only if switching to OIDC in the future
 
 jobs:
   deploy:
@@ -37,11 +30,14 @@ jobs:
       with:
         node-version: '20'
 
-    - name: Install frontend dependencies
+    - name: Install firebase-tools
+      run: npm install -g firebase-tools
+
+    - name: Install dependencies
       run: npm install
 
-    - name: Build React app with Firebase config
-      run: npm install && npm run build # Ensure npm install is run before build
+    - name: Build React app
+      run: npm run build
       env:
         VITE_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
         VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
@@ -52,57 +48,47 @@ jobs:
         VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
         VITE_BACKEND_URL: ${{ secrets.VITE_BACKEND_URL }}
 
-    # Step for Preview Deployments (using the action)
-    - name: Deploy to Firebase Preview (PR or manual preview)
+    - name: Deploy to Firebase Preview
       if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'preview')
-      uses: FirebaseExtended/action-hosting-deploy@v0.9.0 # Explicitly use v0.9.0
+      uses: FirebaseExtended/action-hosting-deploy@v0.9.0
       with:
         repoToken: ${{ github.token }}
-        firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }} # This secret is still used by the action
+        firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         projectId: my-smart-shopper-e0c23
         entryPoint: .
         channelId: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('preview-{0}', github.run_number) }}
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
-    # Step for Production Deployments (direct firebase-tools CLI)
-    - name: Deploy to Firebase Production (manual production or main branch push)
-      if: (github.event_name == 'workflow_dispatch' && inputs.environment == 'production') || (github.event_name != 'pull_request' && github.ref == 'refs/heads/main')
-      # Install firebase-tools
-      run: npm install -g firebase-tools
-      env:
-        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-    
-    - name: Authenticate and Deploy Production
+    - name: Deploy to Firebase Production
       if: (github.event_name == 'workflow_dispatch' && inputs.environment == 'production') || (github.event_name != 'pull_request' && github.ref == 'refs/heads/main')
       run: |
-        # Write the service account key to a temporary file
-        echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" > /tmp/firebase-service-account.json
-        # Set the GOOGLE_APPLICATION_CREDENTIALS environment variable   
+        echo "🔥 Writing service account key"
+        echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > $HOME/firebase.json
+        export GOOGLE_APPLICATION_CREDENTIALS="$HOME/firebase.json"
+
         echo "🚀 Deploying to Firebase Production (my-smart-shopper-e0c23)..."
-        # Execute the firebase deploy command
-        firebase deploy --project my-smart-shopper-e0c23 --only hosting
+        firebase deploy --project my-smart-shopper-e0c23 --only hosting || {
+          echo "❌ Firebase deployment failed"
+          cat $HOME/firebase.json | jq .
+          exit 1
+        }
+
         echo "✅ Production deployment complete."
-
-        # Clean up the temporary file (optional but good practice)
-        rm /tmp/firebase-service-account.json
+        rm -f $HOME/firebase.json
       env:
-        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }} # Keep if your app needs it at runtime for hosting rewrites/functions
-        GOOGLE_APPLICATION_CREDENTIALS: /tmp/firebase-service-account.json
-
+        GOOGLE_APPLICATION_CREDENTIALS: $HOME/firebase.json
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
     - name: Test deployed Gemini endpoint
-      # This step needs to run after either deploy completes.
-      # You might want to adjust its 'if' condition if tests are not always desired.
       run: |
-        # Determine the base URL based on the deployment type
         if [[ "${{ github.event_name }}" == "pull_request" ]]; then
           CHANNEL_ID="pr-${{ github.event.pull_request.number }}"
           BASE_URL="https://${CHANNEL_ID}--my-smart-shopper-e0c23.web.app"
         elif [[ "${{ github.event_name }}" == "workflow_dispatch" && inputs.environment == "preview" ]]; then
           CHANNEL_ID="preview-${{ github.run_number }}"
           BASE_URL="https://${CHANNEL_ID}--my-smart-shopper-e0c23.web.app"
-        else # This covers workflow_dispatch production or main branch push (production)
+        else
           BASE_URL="https://my-smart-shopper-e0c23.web.app"
         fi
 
@@ -111,8 +97,7 @@ jobs:
           -H "Content-Type: application/json" \
           -d '{"prompt": "test"}')
 
-        echo "🔍 Response:"
-        echo "$RESPONSE"
+        echo "🔍 Response: $RESPONSE"
 
         if echo "$RESPONSE" | grep -q 'candidates'; then
           echo "✅ API is working as expected"
@@ -120,4 +105,3 @@ jobs:
           echo "❌ Unexpected or missing response from API"
           exit 1
         fi
-
