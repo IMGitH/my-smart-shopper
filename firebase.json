@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "my-smart-shopper-e0c23",
     "public": "dist",
     "ignore": [
       "firebase.json",
