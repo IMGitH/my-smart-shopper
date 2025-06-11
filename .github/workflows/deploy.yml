@@ -69,10 +69,11 @@ jobs:
         firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         projectId: my-smart-shopper-e0c23
         entryPoint: .
-        channelId: pr-${{ github.event.number }}
+        channelId: pr-${{ github.event.pull_request.number }}
+        target: live
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-    
+
     - name: Deploy to Firebase Production
       if: github.event_name != 'pull_request'
       uses: FirebaseExtended/action-hosting-deploy@v0
@@ -84,9 +85,7 @@ jobs:
         target: live
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-
-
-
+    
     - name: Test deployed Gemini endpoint
       run: |
         CHANNEL="${CHANNEL_ID}"
