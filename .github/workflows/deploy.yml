@@ -13,9 +13,6 @@ on:
         type: choice
         options: [preview, production]
 
-  push:
-    branches: [main]
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
