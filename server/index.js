@@ -7,9 +7,26 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+/* ──────────────────────────────────────────────
+   1. Health-check endpoint for Render
+   ──────────────────────────────────────────── */
+app.get('/health', (_req, res) => {
+  res.status(200).send('OK');
+});
+
+/* ──────────────────────────────────────────────
+   2. Simple GET so hitting the URL in a browser
+      (or curl -I) never 404s
+   ──────────────────────────────────────────── */
+app.get('/api/autoMapItems', (_req, res) => {
+  res.status(200).json({ status: 'alive' });
+});
+
+/* ──────────────────────────────────────────────
+   Existing POST endpoint – keeps full Gemini logic
+   ──────────────────────────────────────────── */
 app.post('/api/autoMapItems', async (req, res) => {
   const { prompt } = req.body;
-
   if (!prompt) {
     return res.status(400).json({ error: 'Missing prompt' });
   }
@@ -29,7 +46,7 @@ app.post('/api/autoMapItems', async (req, res) => {
             },
           ],
         }),
-      },
+      }
     );
 
     const result = await response.json();
@@ -41,10 +58,14 @@ app.post('/api/autoMapItems', async (req, res) => {
   }
 });
 
+/* ──────────────────────────────────────────────
+   Demo endpoint you already had
+   ──────────────────────────────────────────── */
 app.get('/api/hello', (_req, res) => {
   res.json({ message: 'Hello from Cloud Run!' });
 });
 
+/* ────────────────────────────────────────────── */
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
