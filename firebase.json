@@ -12,7 +12,7 @@
       {
         "source": "/api/**",
         "destination": "https://my-smart-shopper-api.onrender.com/api/:splat",
-        "type": 307        // use 308 if you prefer “permanent”
+        "type": 307
       }
     ],
     "rewrites": [
