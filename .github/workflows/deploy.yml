@@ -66,7 +66,7 @@ jobs:
       if: github.event_name == 'pull_request' ||
           (github.event_name == 'workflow_dispatch' &&
            (inputs.environment == '' || inputs.environment == 'preview'))
-      id: deploy_preview
+      id: deploy_preview                        # ← keep this id
       uses: FirebaseExtended/action-hosting-deploy@v0.9.0
       with:
         repoToken:              ${{ github.token }}
@@ -97,7 +97,7 @@ jobs:
         BASE_URL: >-
           ${{ env.CHANNEL_ID == 'live'
               && 'https://my-smart-shopper-e0c23.web.app'
-              || format('https://my-smart-shopper-e0c23--{0}.web.app', env.CHANNEL_ID) }}
+              || steps.deploy_preview.outputs.details_url }}
       run: |
         echo "🔄 Pinging $BASE_URL/api/autoMapItems"
         RESPONSE=$(curl -s -L -X POST "$BASE_URL/api/autoMapItems" \
