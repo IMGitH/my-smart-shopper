@@ -3,12 +3,29 @@ import * as THREE from 'three';
 
 /* global __app_id, __firebase_config, __initial_auth_token */
 
+// ⬇️ injected at build‑time by .env.production (see workflow step)
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || '';
+console.info('[SmartShopper] BACKEND =', API_BASE_URL || '(empty!)');
 
 // Firebase imports
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, addDoc, query, deleteDoc } from 'firebase/firestore';
+import {
+  getAuth,
+  signInAnonymously,
+  signInWithCustomToken,
+  onAuthStateChanged,
+} from 'firebase/auth';
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc,
+  onSnapshot,
+  collection,
+  addDoc,
+  query,
+  deleteDoc,
+} from 'firebase/firestore';
 
 // Translation content
 const translations = {
@@ -83,12 +100,7 @@ const translations = {
 };
 
 // Translation function
-const t = (key, lang) => {
-  if (translations[key] && translations[key][lang]) {
-    return translations[key][lang];
-  }
-  return key; // Fallback to key if translation not found
-};
+const t = (k, lang) => translations[k]?.[lang] ?? k;
 
 
 // Main App Component
@@ -155,7 +167,7 @@ function App() {
     setLanguage(prevLang => prevLang === 'en' ? 'he' : 'en');
   };
 
-  const firebaseEnabled = firebaseConfig && firebaseConfig.projectId;
+  const firebaseEnabled = Boolean(firebaseConfig?.projectId);
   const firestoreReady = useMemo(() => db && userId && isAuthReady, [db, userId, isAuthReady]);
 
   // --- Firebase Initialization and Auth ---
@@ -921,13 +933,21 @@ ${rawShoppingList.join('\n')}`;
               {/* AI Features */}
               <div className="grid grid-cols-1 gap-4">
                 <button
-                  onClick={autoMapItems} // New button for auto-mapping
+                  onClick={autoMapItems}
                   disabled={!firestoreReady || loadingAutoMapping || rawShoppingList.length === 0}
-                  className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 ${loadingAutoMapping || rawShoppingList.length === 0 ? 'opacity-60 cursor-not-allowed' : (darkMode ? 'bg-green-600 text-white hover:bg-green-500' : 'bg-teal-600 text-white hover:bg-teal-500')}`}
+                  className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 ${
+                    loadingAutoMapping || rawShoppingList.length === 0
+                      ? 'opacity-60 cursor-not-allowed'
+                      : darkMode
+                        ? 'bg-green-600 text-white hover:bg-green-500'
+                        : 'bg-teal-600 text-white hover:bg-teal-500'
+                  }`}
                 >
-                  {/* Sparkles Icon for AI suggestion */}
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block mr-2"><path d="M10 13v7.9l-1.3-3.2c-1.4-3.5-4.2-5.7-7.2-6.7"/><path d="M20.2 11.2c-2.3 0-4.6-.3-6.8-.7L10 9.8"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="M4.93 4.93l1.41 1.41"/><path d="M17.66 17.66l1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="M4.93 19.07l1.41-1.41"/><path d="M17.66 6.34l1.41-1.41"/><path d="m14 10 2 2 4-4"/><path d="m14 10-2-2-4 4"/></svg>
-                  {loadingAutoMapping ? t('Suggesting Layout...', language) : t('Suggest Layout', language)}
+                  {!firestoreReady
+                    ? `🔒 ${t('Suggest Layout', language)}`
+                    : loadingAutoMapping
+                      ? t('Suggesting Layout...', language)
+                      : t('Suggest Layout', language)}
                 </button>
               </div>
 
@@ -1196,6 +1216,3 @@ ${rawShoppingList.join('\n')}`;
     </div>
   );
 }
-
-export default App;
-
