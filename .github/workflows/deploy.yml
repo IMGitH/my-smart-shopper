@@ -3,112 +3,112 @@ name: Deploy to Firebase Hosting
 on:
   pull_request:
     branches: [main]
+
+  # manual “Run workflow…” button
   workflow_dispatch:
     inputs:
       environment:
-        description: 'Where to deploy'
+        description: Where to deploy
         required: true
-        default: 'preview'
+        default: preview
         type: choice
         options: [preview, production]
-        
-env:
-  CHANNEL_ID: ${{ github.event_name == 'pull_request' &&
-                  format('pr-{0}', github.event.pull_request.number)
-                  || (inputs.environment == 'production' && 'live')
-                  || format('preview-{0}', github.run_number) }}
-                  
-permissions:
-  checks: write
-  contents: read
-  id-token: write  # Needed only if switching to OIDC in the future
+
+  # automatic prod deploy on merge to main
+  push:
+    branches: [main]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+    # ── shared variables ───────────────────────────────────────────────────
+    env:
+      # pr-123  |  preview-87  |  live
+      CHANNEL_ID: >-
+        ${{ github.event_name == 'pull_request'                           && format('pr-{0}', github.event.pull_request.number)
+            || (github.event_name == 'workflow_dispatch'
+                && inputs.environment == 'production')                    && 'live'
+            || (github.event_name == 'push'
+                && github.ref == 'refs/heads/main')                       && 'live'
+            || format('preview-{0}', github.run_number) }}
 
-    - name: Debug – show env
+    steps:
+    # ─────────── housekeeping ───────────
+    - uses: actions/checkout@v4
+
+    - name: Debug – echo derived vars
       run: |
         echo "event_name        : ${{ github.event_name }}"
         echo "inputs.environment: ${{ inputs.environment }}"
+        echo "github.ref        : ${{ github.ref }}"
         echo "CHANNEL_ID        : $CHANNEL_ID"
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
+    - uses: actions/setup-node@v4
       with:
         node-version: '20'
 
-    - name: Install firebase-tools
-      run: npm install -g firebase-tools
+    - name: Install CLI & app deps
+      run: |
+        npm i -g firebase-tools
+        npm ci
 
-    - name: Install dependencies
-      run: npm install
-
-    - name: Build React app
-      run: npm run build
+    - name: Build Vite / React app
       env:
         VITE_FIREBASE_PROJECT_ID: my-smart-shopper-e0c23
-        VITE_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
-        VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
+        VITE_FIREBASE_API_KEY:        ${{ secrets.FIREBASE_API_KEY }}
+        VITE_FIREBASE_AUTH_DOMAIN:    ${{ secrets.FIREBASE_AUTH_DOMAIN }}
         VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET }}
-        VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
-        VITE_FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+        VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+        VITE_FIREBASE_APP_ID:         ${{ secrets.FIREBASE_APP_ID }}
         VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
-        VITE_BACKEND_URL: ${{ secrets.VITE_BACKEND_URL }}
+        VITE_BACKEND_URL:             ${{ secrets.VITE_BACKEND_URL }}
+      run: npm run build
 
-    - name: Deploy to Firebase Preview
-      if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'preview')
+    # ─────────── preview deploy ───────────
+    - name: Deploy to Firebase preview
+      if: github.event_name == 'pull_request' ||
+          (github.event_name == 'workflow_dispatch' &&
+           (inputs.environment == '' || inputs.environment == 'preview'))
+      id: deploy_preview
       uses: FirebaseExtended/action-hosting-deploy@v0.9.0
       with:
-        repoToken: ${{ github.token }}
+        repoToken:              ${{ github.token }}
         firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        projectId: my-smart-shopper-e0c23
-        entryPoint: .
-        channelId: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('preview-{0}', github.run_number) }}
+        projectId:              my-smart-shopper-e0c23
+        entryPoint:             .
+        channelId:              ${{ env.CHANNEL_ID }}
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
-    - name: Deploy to Firebase Production
-      if: (github.event_name == 'workflow_dispatch' && inputs.environment == 'production') || (github.event_name != 'pull_request' && github.ref == 'refs/heads/main')
+    # ─────────── production deploy ───────────
+    - name: Deploy to Firebase production
+      if: (github.event_name == 'workflow_dispatch' && inputs.environment == 'production') ||
+          (github.event_name == 'push' && github.ref == 'refs/heads/main')
       run: |
-        echo "🔥 Writing service account key"
-        echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > $HOME/firebase.json
+        echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" > "$HOME/firebase.json"
         export GOOGLE_APPLICATION_CREDENTIALS="$HOME/firebase.json"
-
-        echo "🚀 Deploying to Firebase Production (my-smart-shopper-e0c23)..."
-        firebase deploy --project my-smart-shopper-e0c23 --only hosting || {
-          echo "❌ Firebase deployment failed"
-          cat $HOME/firebase.json | jq .
-          exit 1
-        }
-
-        echo "✅ Production deployment complete."
-        rm -f $HOME/firebase.json
+        firebase deploy --project my-smart-shopper-e0c23 --only hosting
+        rm "$HOME/firebase.json"
       env:
-        GOOGLE_APPLICATION_CREDENTIALS: $HOME/firebase.json
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
-    - name: Test deployed Gemini endpoint 2
+    # ─────────── smoke-test the deployed API ───────────
+    - name: Test deployed Gemini endpoint
       env:
-        # $CHANNEL_ID is already set at the job level
         BASE_URL: >-
           ${{ env.CHANNEL_ID == 'live'
               && 'https://my-smart-shopper-e0c23.web.app'
-              || format('https://{0}--my-smart-shopper-e0c23.web.app', env.CHANNEL_ID) }}
+              || format('https://my-smart-shopper-e0c23--{0}.web.app', env.CHANNEL_ID) }}
       run: |
         echo "🔄 Pinging $BASE_URL/api/autoMapItems"
         RESPONSE=$(curl -s -L -X POST "$BASE_URL/api/autoMapItems" \
-                     -H "Content-Type: application/json" \
-                     -d '{"prompt":"test"}')
-
+                   -H "Content-Type: application/json" \
+                   -d '{"prompt":"test"}')
         echo "🔍 Response: $RESPONSE"
-        if echo "$RESPONSE" | grep -q 'candidates'; then
+        if echo "$RESPONSE" | grep -q '"candidates"'; then
           echo "✅ API is working as expected"
         else
-          echo "❌ Unexpected or missing response from API"
+          echo "❌ API returned unexpected payload"
           exit 1
         fi
