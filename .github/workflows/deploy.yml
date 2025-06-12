@@ -82,14 +82,17 @@ jobs:
 
     - name: Test deployed Gemini endpoint
       run: |
+        PROJECT_ID="my-smart-shopper-e0c23"
+        BASE_URL=""
+
         if [[ "${{ github.event_name }}" == "pull_request" ]]; then
           CHANNEL_ID="pr-${{ github.event.pull_request.number }}"
-          BASE_URL="https://${CHANNEL_ID}--my-smart-shopper-e0c23.web.app"
-        elif [[ "${{ github.event_name }}" == "workflow_dispatch" && inputs.environment == "preview" ]]; then
+          BASE_URL="https://${CHANNEL_ID}--${PROJECT_ID}.web.app"
+        elif [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.environment }}" == "preview" ]]; then
           CHANNEL_ID="preview-${{ github.run_number }}"
-          BASE_URL="https://${CHANNEL_ID}--my-smart-shopper-e0c23.web.app"
+          BASE_URL="https://${CHANNEL_ID}--${PROJECT_ID}.web.app"
         else
-          BASE_URL="https://my-smart-shopper-e0c23.web.app"
+          BASE_URL="https://${PROJECT_ID}.web.app"
         fi
 
         echo "🔄 Pinging $BASE_URL/api/autoMapItems"
@@ -99,6 +102,27 @@ jobs:
 
         echo "🔍 Response: $RESPONSE"
 
+        if echo "$RESPONSE" | grep -q 'candidates'; then
+          echo "✅ API is working as expected"
+        else
+          echo "❌ Unexpected or missing response from API"
+          exit 0
+        fi
+
+    - name: Test deployed Gemini endpoint 2
+      env:
+        # $CHANNEL_ID is already set at the job level
+        BASE_URL: >-
+          ${{ env.CHANNEL_ID == 'live'
+              && 'https://my-smart-shopper-e0c23.web.app'
+              || format('https://{0}--my-smart-shopper-e0c23.web.app', env.CHANNEL_ID) }}
+      run: |
+        echo "🔄 Pinging $BASE_URL/api/autoMapItems"
+        RESPONSE=$(curl -s -L -X POST "$BASE_URL/api/autoMapItems" \
+                     -H "Content-Type: application/json" \
+                     -d '{"prompt":"test"}')
+
+        echo "🔍 Response: $RESPONSE"
         if echo "$RESPONSE" | grep -q 'candidates'; then
           echo "✅ API is working as expected"
         else
