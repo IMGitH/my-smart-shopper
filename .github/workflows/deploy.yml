@@ -62,7 +62,7 @@ jobs:
       run: npm run build
 
     # ─────────── preview deploy ───────────
-    - name: Deploy to Firebase preview
+    - name: Deploy to Firebase preview (force)
       if: github.event_name == 'pull_request' ||
           (github.event_name == 'workflow_dispatch' &&
            (inputs.environment == '' || inputs.environment == 'preview'))
@@ -72,8 +72,9 @@ jobs:
         repoToken:              ${{ github.token }}
         firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         projectId:              my-smart-shopper-e0c23
-        entryPoint:             .
+        entryPoint:             ${{ github.workspace }}
         channelId:              ${{ env.CHANNEL_ID }}
+        deployArgs:             --force
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
@@ -86,7 +87,7 @@ jobs:
         repoToken:              ${{ github.token }}
         firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         projectId:              my-smart-shopper-e0c23
-        entryPoint:             .
+        entryPoint:             ${{ github.workspace }}
         channelId:              live              # ← the action recognises “live” as prod
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
