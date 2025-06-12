@@ -2,20 +2,23 @@
   "hosting": {
     "site": "my-smart-shopper-e0c23",
     "public": "dist",
+
     "ignore": [
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
     ],
-    "rewrites": [
+
+    "redirects": [
       {
-        "source": "/api/**",
-        "destination": "https://my-smart-shopper-api.onrender.com/api/:splat"
-      },
-      {
-        "source": "**",
-        "destination": "/index.html"
+        "source": "/api/:path*",
+        "destination": "https://my-smart-shopper-api.onrender.com/api/:path*",
+        "type": 307
       }
+    ],
+
+    "rewrites": [
+      { "source": "**", "destination": "/index.html" }
     ]
   }
 }
