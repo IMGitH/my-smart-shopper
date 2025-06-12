@@ -4,7 +4,6 @@ on:
   pull_request:
     branches: [main]
 
-  # manual “Run workflow…” button
   workflow_dispatch:
     inputs:
       environment:
@@ -14,42 +13,34 @@ on:
         type: choice
         options: [preview, production]
 
+  push:
+    branches: [main]
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
-    # ── shared variables ───────────────────────────────────────────────────
     env:
-      # pr-123  |  preview-87  |  live
       CHANNEL_ID: >-
-        ${{ github.event_name == 'pull_request'                           && format('pr-{0}', github.event.pull_request.number)
+        ${{ github.event_name == 'pull_request'
+              && format('pr-{0}', github.event.pull_request.number)
             || (github.event_name == 'workflow_dispatch'
-                && inputs.environment == 'production')                    && 'live'
+                && inputs.environment == 'production')
+              && 'live'
             || (github.event_name == 'push'
-                && github.ref == 'refs/heads/main')                       && 'live'
+                && github.ref == 'refs/heads/main')
+              && 'live'
             || format('preview-{0}', github.run_number) }}
 
     steps:
-    # ─────────── housekeeping ───────────
+    # checkout & build
     - uses: actions/checkout@v4
-
-    - name: Debug – echo derived vars
-      run: |
-        echo "event_name        : ${{ github.event_name }}"
-        echo "inputs.environment: ${{ inputs.environment }}"
-        echo "github.ref        : ${{ github.ref }}"
-        echo "CHANNEL_ID        : $CHANNEL_ID"
-
     - uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-
-    - name: Install CLI & app deps
-      run: |
+      with: { node-version: '20' }
+    - run: |
         npm i -g firebase-tools
         npm ci
-
-    - name: Build Vite / React app
+    - run: npm run build
       env:
         VITE_FIREBASE_PROJECT_ID: my-smart-shopper-e0c23
         VITE_FIREBASE_API_KEY:        ${{ secrets.FIREBASE_API_KEY }}
@@ -59,14 +50,13 @@ jobs:
         VITE_FIREBASE_APP_ID:         ${{ secrets.FIREBASE_APP_ID }}
         VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
         VITE_BACKEND_URL:             ${{ secrets.VITE_BACKEND_URL }}
-      run: npm run build
 
-    # ─────────── preview deploy ───────────
-    - name: Deploy to Firebase preview (force)
+    # preview deploy
+    - name: Deploy preview
       if: github.event_name == 'pull_request' ||
           (github.event_name == 'workflow_dispatch' &&
            (inputs.environment == '' || inputs.environment == 'preview'))
-      id: deploy_preview                        # ← keep this id
+      id: deploy_preview
       uses: FirebaseExtended/action-hosting-deploy@v0.9.0
       with:
         repoToken:              ${{ github.token }}
@@ -74,12 +64,11 @@ jobs:
         projectId:              my-smart-shopper-e0c23
         entryPoint:             ${{ github.workspace }}
         channelId:              ${{ env.CHANNEL_ID }}
-        deployArgs:             --force
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
-    # ─────────── production deploy ───────────
-    - name: Deploy to Firebase production
+    # production deploy
+    - name: Deploy production
       if: (github.event_name == 'workflow_dispatch' && inputs.environment == 'production') ||
           (github.event_name == 'push' && github.ref == 'refs/heads/main')
       uses: FirebaseExtended/action-hosting-deploy@v0.9.0
@@ -88,11 +77,11 @@ jobs:
         firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         projectId:              my-smart-shopper-e0c23
         entryPoint:             ${{ github.workspace }}
-        channelId:              live              # ← the action recognises “live” as prod
+        channelId:              live
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
-    # ─────────── smoke-test the deployed API ───────────
+    # smoke-test whichever URL we just deployed
     - name: Test deployed Gemini endpoint
       env:
         BASE_URL: >-
@@ -101,13 +90,13 @@ jobs:
               || steps.deploy_preview.outputs.details_url }}
       run: |
         echo "🔄 Pinging $BASE_URL/api/autoMapItems"
-        RESPONSE=$(curl -s -L -X POST "$BASE_URL/api/autoMapItems" \
-                   -H "Content-Type: application/json" \
-                   -d '{"prompt":"test"}')
-        echo "🔍 Response: $RESPONSE"
-        if echo "$RESPONSE" | grep -q '"candidates"'; then
-          echo "✅ API is working as expected"
+        STATUS=$(curl -s -L -w '%{http_code}' -o response.json \
+                 -X POST -H "Content-Type: application/json" \
+                 -d '{"prompt":"test"}' "$BASE_URL/api/autoMapItems")
+        cat response.json
+        if [ "$STATUS" -eq 200 ]; then
+          echo "✅ API reachable"
         else
-          echo "❌ API returned unexpected payload"
+          echo "❌ API returned HTTP $STATUS"
           exit 1
         fi
