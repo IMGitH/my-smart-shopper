@@ -11,7 +11,13 @@ on:
         default: 'preview'
         type: choice
         options: [preview, production]
-
+        
+env:
+  CHANNEL_ID: ${{ github.event_name == 'pull_request' &&
+                  format('pr-{0}', github.event.pull_request.number)
+                  || (inputs.environment == 'production' && 'live')
+                  || format('preview-{0}', github.run_number) }}
+                  
 permissions:
   checks: write
   contents: read
@@ -79,35 +85,6 @@ jobs:
       env:
         GOOGLE_APPLICATION_CREDENTIALS: $HOME/firebase.json
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-
-    - name: Test deployed Gemini endpoint
-      run: |
-        PROJECT_ID="my-smart-shopper-e0c23"
-        BASE_URL=""
-
-        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-          CHANNEL_ID="pr-${{ github.event.pull_request.number }}"
-          BASE_URL="https://${CHANNEL_ID}--${PROJECT_ID}.web.app"
-        elif [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.environment }}" == "preview" ]]; then
-          CHANNEL_ID="preview-${{ github.run_number }}"
-          BASE_URL="https://${CHANNEL_ID}--${PROJECT_ID}.web.app"
-        else
-          BASE_URL="https://${PROJECT_ID}.web.app"
-        fi
-
-        echo "🔄 Pinging $BASE_URL/api/autoMapItems"
-        RESPONSE=$(curl -s -X POST "$BASE_URL/api/autoMapItems" \
-          -H "Content-Type: application/json" \
-          -d '{"prompt": "test"}')
-
-        echo "🔍 Response: $RESPONSE"
-
-        if echo "$RESPONSE" | grep -q 'candidates'; then
-          echo "✅ API is working as expected"
-        else
-          echo "❌ Unexpected or missing response from API"
-          exit 0
-        fi
 
     - name: Test deployed Gemini endpoint 2
       env:
