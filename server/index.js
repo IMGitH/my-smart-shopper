@@ -1,72 +1,72 @@
 /* global process */
 import express from 'express';
 import cors from 'cors';
+import fetch from 'node-fetch';
 
 const app = express();
-
 app.use(cors());
 app.use(express.json());
 
 /* ──────────────────────────────────────────────
-   1. Health-check endpoint for Render
+   Health-check endpoint for Render
    ──────────────────────────────────────────── */
-app.get('/health', (_req, res) => {
-  res.status(200).send('OK');
-});
+app.get('/health', (_, res) => res.status(200).send('OK'));
 
 /* ──────────────────────────────────────────────
-   2. Simple GET so hitting the URL in a browser
-      (or curl -I) never 404s
+   Simple GET so a browser never 404s
    ──────────────────────────────────────────── */
-app.get('/api/autoMapItems', (_req, res) => {
-  res.status(200).json({ status: 'alive' });
-});
+app.get('/api/autoMapItems', (_, res) =>
+  res.status(200).json({ status: 'alive' })
+);
 
 /* ──────────────────────────────────────────────
-   Existing POST endpoint – keeps full Gemini logic
+   Helper: call Gemini with automatic retries
+   ──────────────────────────────────────────── */
+async function callGemini(prompt, retries = 2) {
+  const { GEMINI_API_KEY } = process.env;
+  const body = JSON.stringify({
+    contents: [{ role: 'user', parts: [{ text: prompt }] }]
+  });
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const resp = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }
+    );
+
+    if (resp.ok) return resp.json();               // 2xx → success
+    if (resp.status >= 500 && attempt < retries) { // transient
+      await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
+      continue;
+    }
+    const text = await resp.text();
+    throw new Error(`Gemini ${resp.status}: ${text}`);
+  }
+}
+
+/* ──────────────────────────────────────────────
+   Main POST endpoint
    ──────────────────────────────────────────── */
 app.post('/api/autoMapItems', async (req, res) => {
   const { prompt } = req.body;
-  if (!prompt) {
-    return res.status(400).json({ error: 'Missing prompt' });
-  }
+  if (!prompt) return res.status(400).json({ error: 'Missing prompt' });
 
   try {
-    const { GEMINI_API_KEY } = process.env;
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [
-            {
-              role: 'user',
-              parts: [{ text: prompt }],
-            },
-          ],
-        }),
-      }
-    );
-
-    const result = await response.json();
-    console.log('Gemini response:', JSON.stringify(result));
-    res.status(200).json(result);
-  } catch (error) {
-    console.error('Gemini API error:', error);
-    res.status(500).json({ error: 'Gemini API call failed' });
+    const result = await callGemini(prompt);
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(503).json({ error: 'Gemini temporarily unavailable' });
   }
 });
 
 /* ──────────────────────────────────────────────
    Demo endpoint you already had
    ──────────────────────────────────────────── */
-app.get('/api/hello', (_req, res) => {
-  res.json({ message: 'Hello from Cloud Run!' });
-});
+app.get('/api/hello', (_req, res) =>
+  res.json({ message: 'Hello from Cloud Run!' })
+);
 
 /* ────────────────────────────────────────────── */
 const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Server listening on ${PORT}`));
