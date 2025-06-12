@@ -2,16 +2,26 @@
   "hosting": {
     "site": "my-smart-shopper-e0c23",
     "public": "dist",
+
     "ignore": [
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
     ],
-    "rewrites": [
+
+    /* NEW ─ redirect /api/** to your Render back end           *
+     * :splat (or $1 in a regex) carries the wild-card segment  *
+     * 307/308 keeps the original POST method and body.         */
+    "redirects": [
       {
         "source": "/api/**",
-        "destination": "https://my-smart-shopper-api.onrender.com/api/**"
-      },
+        "destination": "https://my-smart-shopper-api.onrender.com/api/:splat",
+        "type": 307        // use 308 if you prefer “permanent”
+      }
+    ],
+
+    /* front-end SPA fallback */
+    "rewrites": [
       {
         "source": "**",
         "destination": "/index.html"
