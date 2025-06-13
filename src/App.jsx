@@ -1006,12 +1006,24 @@ ${rawShoppingList.join('\n')}`;
               >
                 {t('Clear List', language)}
               </button>
-            </div>
-          </div>
-            {firestoreLoading && <p className="text-center text-sm opacity-70">{t('Loading/Saving data...', language)}</p>}
-            {firestoreError && <p className="text-center text-red-500 text-sm">{firestoreError}</p>}
-            {autoMappingError && <p className="text-center text-red-500 text-sm">{autoMappingError}</p>} {/* Auto-mapping error display */}
-            {userId && <p className="text-center text-sm opacity-70 mt-4">{t('Your User ID:', language)} <span className="font-mono text-xs">{userId}</span></p>}
+            </div>+            {/* status / error messages */}
+            {firestoreLoading && (
+              <p className="text-center text-sm opacity-70">
+                {t('Loading/Saving data...', language)}
+              </p>
+            )}
+            {firestoreError && (
+              <p className="text-center text-red-500 text-sm">{firestoreError}</p>
+            )}
+            {autoMappingError && (
+              <p className="text-center text-red-500 text-sm">{autoMappingError}</p>
+            )}
+            {userId && (
+              <p className="text-center text-sm opacity-70 mt-4">
+                {t('Your User ID:', language)}{' '}
+                <span className="font-mono text-xs">{userId}</span>
+              </p>
+            )}
           </div>
 
           {/* Sorted List Display */}
