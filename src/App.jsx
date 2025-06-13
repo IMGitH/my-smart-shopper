@@ -1216,3 +1216,4 @@ ${rawShoppingList.join('\n')}`;
     </div>
   );
 }
+export default App;
