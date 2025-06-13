@@ -96,11 +96,19 @@ jobs:
               || steps.deploy_preview.outputs.details_url }}
       run: |
         echo "🔄 Pinging $BASE_URL/api/health"
-        for i in {1..6}; do
-          STATUS=$(curl -s -L -o /dev/null -w '%{http_code}' "$BASE_URL/api/health")
+        for i in {1..24}; do              # 24 × 5 s  ≈ 2 min
+          STATUS=$(curl -s -L -o /dev/null -w '%{http_code}' \
+                   "$BASE_URL/api/health")
+
           if [ "$STATUS" = 200 ]; then
-            echo "✅ Hosting OK (HTTP 200)"; exit 0
+            echo "✅ Hosting + backend ready (HTTP 200)"; exit 0
           fi
-          echo "   still $STATUS (try $i/6)…"; sleep 5
+
+          # 307 = redirect OK; 404/502/503 = still propagating or cold-start
+          case "$STATUS" in 307|404|502|503)
+            echo "   still $STATUS (try $i/24)…"; sleep 5 ;;
+          *)
+            echo "❌ Unexpected HTTP $STATUS"; exit 1 ;;
+          esac
         done
-        echo "❌ Hosting never reached 200"; exit 1
+        echo "❌ Backend never reached 200 within 2 min"; exit 1
