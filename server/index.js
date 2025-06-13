@@ -1,29 +1,22 @@
 /* global process */
 import express from 'express';
 import cors from 'cors';
-import fetch from 'node-fetch';
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-/* ──────────────────────────────
-   Health-check (Render & Hosting)
-   ────────────────────────────── */
+/* ────────────────── Health checks ────────────────── */
 app.get(['/health', '/api/health'], (_, res) =>
   res.status(200).send('OK')
 );
 
-/* ──────────────────────────────
-   Simple GET so a browser never 404s
-   ────────────────────────────── */
+/* ────────────────── Quick GET echo ───────────────── */
 app.get('/api/autoMapItems', (_, res) =>
   res.status(200).json({ status: 'alive' })
 );
 
-/* ──────────────────────────────
-   Helper: call Gemini with retries
-   ────────────────────────────── */
+/* ── Helper: call Gemini with automatic retries ───── */
 async function callGemini(prompt, retries = 2) {
   const { GEMINI_API_KEY } = process.env;
   const body = JSON.stringify({
@@ -46,9 +39,7 @@ async function callGemini(prompt, retries = 2) {
   }
 }
 
-/* ──────────────────────────────
-   Main POST endpoint
-   ────────────────────────────── */
+/* ────────────────── Main POST endpoint ──────────── */
 app.post('/api/autoMapItems', async (req, res) => {
   const { prompt } = req.body;
   if (!prompt) return res.status(400).json({ error: 'Missing prompt' });
@@ -62,13 +53,11 @@ app.post('/api/autoMapItems', async (req, res) => {
   }
 });
 
-/* ──────────────────────────────
-   Demo endpoint (unchanged)
-   ────────────────────────────── */
+/* ────────────────── Demo endpoint ───────────────── */
 app.get('/api/hello', (_req, res) =>
   res.json({ message: 'Hello from Cloud Run!' })
 );
 
-/* ────────────────────────────── */
+/* ────────────────── Start server ────────────────── */
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => console.log(`Server listening on ${PORT}`));
