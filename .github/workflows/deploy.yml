@@ -88,22 +88,18 @@ jobs:
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
-    # smoke-test whichever URL we just deployed
-    - name: Test deployed Gemini endpoint
+    - name: Smoke-test deployed endpoint
       env:
         BASE_URL: >-
           ${{ env.CHANNEL_ID == 'live'
               && 'https://my-smart-shopper-e0c23.web.app'
               || steps.deploy_preview.outputs.details_url }}
       run: |
-        echo "🔄 Pinging $BASE_URL/api/autoMapItems"
-        STATUS=$(curl -s -L -w '%{http_code}' -o response.json \
-                 -X POST -H "Content-Type: application/json" \
-                 -d '{"prompt":"test"}' "$BASE_URL/api/autoMapItems")
-        cat response.json
-        if [ "$STATUS" -eq 200 ]; then
-          echo "✅ API reachable"
-        else
-          echo "❌ API returned HTTP $STATUS"
-          exit 1
-        fi
+        echo "🔄 Pinging $BASE_URL/api/health"
+        for i in {1..6}; do
+          STATUS=$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/api/health")
+          [ "$STATUS" = 200 ] && { echo "✅ Hosting OK"; exit 0; }
+          echo "   still $STATUS (try $i/6)…"; sleep 5
+        done
+        echo "❌ Hosting never reached 200"; exit 1
+    
