@@ -45,8 +45,11 @@ app.post('/api/autoMapItems', async (req, res) => {
   if (!prompt) return res.status(400).json({ error: 'Missing prompt' });
 
   try {
-    const result = await callGemini(prompt);
-    res.json(result);
+    const raw = await callGemini(prompt);
+    let data;
+    try   { data = JSON.parse(raw.candidates[0].content.parts[0].text); }
+    catch { data = { error: 'Unexpected AI response', raw }; }
+    res.json(data);
   } catch (err) {
     console.error(err);
     res.status(503).json({ error: 'Gemini temporarily unavailable' });
