@@ -891,98 +891,123 @@ ${rawShoppingList.join('\n')}`;
 
       {/* Main Shopping List Management Section */}
       <section id="manage-list" className="py-20 max-w-7xl mx-auto px-6">
-        <h2 className="text-5xl font-bold text-center mb-16 animate-fade-in-up">{t('Your Smart Shopping List', language)}</h2>
+        <h2 className="text-5xl font-bold text-center mb-16 animate-fade-in-up">
+          {t('Your Smart Shopping List', language)}
+        </h2>
+      
         <div className="flex flex-col lg:flex-row gap-12">
-          {/* Input & Controls */}
-          <div ref={addToRefs} className={`lg:w-1/2 p-8 rounded-xl shadow-lg ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
-            <h3 className="text-3xl font-bold mb-6 flex items-center gap-3">
-              {/* List Icon */}
-              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>
-              {t('Add & Manage Items', language)}
-            </h3>
+          {/* 📥 Input & controls */}
+          <div
+            ref={addToRefs}
+            className={`lg:w-1/2 p-8 rounded-xl shadow-lg ${
+              darkMode ? 'bg-gray-800' : 'bg-white'
+            }`}
+          >
+            {/* Textarea */}
             <textarea
               value={shoppingListInput}
               onChange={(e) => setShoppingListInput(e.target.value)}
-              placeholder={t("Enter items, one per line (e.g., Milk, Bread, Apples)", language)}
+              placeholder={t(
+                'Enter items, one per line (e.g., Milk, Bread, Apples)',
+                language,
+              )}
               rows="8"
-              className={`w-full p-3 rounded-lg border focus:ring-2 focus:outline-none resize-y mb-4 ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400 focus:border-cyan-500 focus:ring-cyan-500' : 'bg-gray-100 border-gray-300 text-gray-900 placeholder-gray-500 focus:border-purple-500 focus:ring-purple-500'}`}
-              aria-label="Shopping list input"
-            ></textarea>
-            <div className="flex flex-col gap-4 mb-6">
-              {/* Primary List Actions */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <button
-                  onClick={addItemsToList}
-                  className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 ${darkMode ? 'bg-cyan-600 text-white hover:bg-cyan-500' : 'bg-purple-700 text-white hover:bg-purple-600'}`}
-                >
-                  {/* Plus Icon */}
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block mr-2"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
-                  {t('Add Items', language)}
-                </button>
-                <button
-                  onClick={sortShoppingList}
-                  disabled={rawShoppingList.length === 0} // Disabled if rawShoppingList is empty
-                  className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 ${rawShoppingList.length === 0 ? 'opacity-60 cursor-not-allowed' : (darkMode ? 'bg-purple-600 text-white hover:bg-purple-700' : 'bg-cyan-500 text-gray-900 hover:bg-cyan-400')}`}
-                >
-                  {/* LayoutGrid Icon */}
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block mr-2"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
-                  {t('Sort by Section', language)}
-                </button>
-              </div>
-
-              {/* AI Features */}
-              <div className="grid grid-cols-1 gap-4">
-                <button
-                  onClick={autoMapItems}
-                  disabled={!firestoreReady || loadingAutoMapping || rawShoppingList.length === 0}
-                  className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 ${
-                    loadingAutoMapping || rawShoppingList.length === 0
-                      ? 'opacity-60 cursor-not-allowed'
-                      : darkMode
+              className={`w-full p-3 rounded-lg border focus:ring-2 focus:outline-none resize-y mb-4 ${
+                darkMode
+                  ? 'bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400 focus:border-cyan-500 focus:ring-cyan-500'
+                  : 'bg-gray-100 border-gray-300 text-gray-900 placeholder-gray-500 focus:border-purple-500 focus:ring-purple-500'
+              }`}
+            />
+      
+            {/* Add / Sort */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+              <button
+                onClick={addItemsToList}
+                className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 ${
+                  darkMode
+                    ? 'bg-cyan-600 text-white hover:bg-cyan-500'
+                    : 'bg-purple-700 text-white hover:bg-purple-600'
+                }`}
+              >
+                {t('Add Items', language)}
+              </button>
+      
+              <button
+                onClick={sortShoppingList}
+                disabled={!rawShoppingList.length}
+                className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 ${
+                  !rawShoppingList.length
+                    ? 'opacity-60 cursor-not-allowed'
+                    : darkMode
+                        ? 'bg-purple-600 text-white hover:bg-purple-700'
+                        : 'bg-cyan-500 text-gray-900 hover:bg-cyan-400'
+                }`}
+              >
+                {t('Sort by Section', language)}
+              </button>
+            </div>
+      
+            {/* 🤖 AI-powered actions */}
+            <div className="grid grid-cols-1 gap-4 mb-6">
+              <button
+                onClick={handleSuggestLayout}         /* wired here */
+                disabled={
+                  !firestoreReady ||
+                  loadingAutoMapping ||
+                  !rawShoppingList.length
+                }
+                className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 ${
+                  loadingAutoMapping || !rawShoppingList.length
+                    ? 'opacity-60 cursor-not-allowed'
+                    : darkMode
                         ? 'bg-green-600 text-white hover:bg-green-500'
                         : 'bg-teal-600 text-white hover:bg-teal-500'
-                  }`}
-                >
-                  {!firestoreReady
-                    ? `🔒 ${t('Suggest Layout', language)}`
-                    : loadingAutoMapping
+                }`}
+              >
+                {!firestoreReady
+                  ? `🔒 ${t('Suggest Layout', language)}`
+                  : loadingAutoMapping
                       ? t('Suggesting Layout...', language)
                       : t('Suggest Layout', language)}
-                </button>
-              </div>
-
-              {/* List Persistence */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <button
-                  onClick={() => setShowSaveModal(true)}
-                  className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 ${darkMode ? 'bg-gray-700 text-gray-100 hover:bg-gray-600' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'}`}
-                >
-                  {/* Save Icon */}
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block mr-2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                  {t('Save List', language)}
-                </button>
-                <button
-                  onClick={() => setShowLoadModal(true)}
-                  className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 ${darkMode ? 'bg-gray-700 text-gray-100 hover:bg-gray-600' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'}`}
-                >
-                  {/* FolderOpen Icon */}
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block mr-2"><path d="M6 17a3 3 0 0 0 3 3h10a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8a2 2 0 0 1-2-2 2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h2"/><path d="M10 12h4"/></svg>
-                  {t('Load List', language)}
-                </button>
-              </div>
-
-              {/* Destructive Action */}
-              <div className="grid grid-cols-1">
-                <button
-                  onClick={clearList}
-                  className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 ${darkMode ? 'bg-red-700 text-white hover:bg-red-600' : 'bg-red-500 text-white hover:bg-red-600'}`}
-                >
-                  {/* Trash2 Icon */}
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block mr-2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
-                  {t('Clear List', language)}
-                </button>
-              </div>
+              </button>
             </div>
+      
+            {/* 💾 List persistence */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <button
+                onClick={() => setShowSaveModal(true)}
+                className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 ${
+                  darkMode
+                    ? 'bg-yellow-600 text-white hover:bg-yellow-500'
+                    : 'bg-amber-500 text-gray-900 hover:bg-amber-400'
+                }`}
+              >
+                {t('Save List', language)}
+              </button>
+      
+              <button
+                onClick={() => setShowLoadModal(true)}
+                className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 ${
+                  darkMode
+                    ? 'bg-blue-600 text-white hover:bg-blue-500'
+                    : 'bg-sky-500 text-gray-900 hover:bg-sky-400'
+                }`}
+              >
+                {t('Load List', language)}
+              </button>
+      
+              <button
+                onClick={clearList}
+                className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 ${
+                  darkMode
+                    ? 'bg-red-600 text-white hover:bg-red-500'
+                    : 'bg-rose-500 text-white hover:bg-rose-400'
+                }`}
+              >
+                {t('Clear List', language)}
+              </button>
+            </div>
+          </div>
             {firestoreLoading && <p className="text-center text-sm opacity-70">{t('Loading/Saving data...', language)}</p>}
             {firestoreError && <p className="text-center text-red-500 text-sm">{firestoreError}</p>}
             {autoMappingError && <p className="text-center text-red-500 text-sm">{autoMappingError}</p>} {/* Auto-mapping error display */}
