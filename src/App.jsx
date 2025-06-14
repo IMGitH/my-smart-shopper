@@ -144,6 +144,8 @@ function App() {
   const cursorRef = useRef(null);
   // Refs for sections to apply scroll animations
   const sectionRefs = useRef([]);
+  const bodyMaterialRef = useRef(null);
+  const handleMaterialRef = useRef(null);
   sectionRefs.current = [];
 
   // State for drag and drop
@@ -558,35 +560,33 @@ ${rawShoppingList.join('\n')}`;
 
       const result = await response.json();
 
-      if (result.candidates && result.candidates.length > 0 &&
+      let suggestedMappings = Array.isArray(result) ? result : null;
+
+      if (!suggestedMappings && result.candidates && result.candidates.length > 0 &&
           result.candidates[0].content && result.candidates[0].content.parts &&
           result.candidates[0].content.parts.length > 0) {
         const jsonString = result.candidates[0].content.parts[0].text;
-        const suggestedMappings = JSON.parse(jsonString);
+        try { suggestedMappings = JSON.parse(jsonString); } catch { suggestedMappings = null; }
+      }
 
-        if (Array.isArray(suggestedMappings)) {
-          const userLayoutDocRef = doc(db, `artifacts/${appId}/users/${userId}/userStoreLayouts`, 'myLayout');
-          const currentLayout = (await getDoc(userLayoutDocRef)).data()?.sections || {};
-          let updatedLayout = { ...currentLayout };
+      if (Array.isArray(suggestedMappings)) {
+        const userLayoutDocRef = doc(db, `artifacts/${appId}/users/${userId}/userStoreLayouts`, 'myLayout');
+        const currentLayout = (await getDoc(userLayoutDocRef)).data()?.sections || {};
+        let updatedLayout = { ...currentLayout };
 
-          suggestedMappings.forEach(mapping => {
-            // Only add if not already explicitly mapped by the user or if it's a new item
-            const trimmedItem = mapping.item.trim();
-            const trimmedSection = mapping.section.trim();
-            if (trimmedItem && trimmedSection && !updatedLayout[trimmedItem]) {
-              updatedLayout[trimmedItem] = trimmedSection;
-            }
-          });
+        suggestedMappings.forEach(mapping => {
+          const trimmedItem = mapping.item.trim();
+          const trimmedSection = mapping.section.trim();
+          if (trimmedItem && trimmedSection && !updatedLayout[trimmedItem]) {
+            updatedLayout[trimmedItem] = trimmedSection;
+          }
+        });
 
-          await setDoc(userLayoutDocRef, { sections: updatedLayout, userId: userId }, { merge: true });
-          setLayoutMessage(t('Auto-mapping complete! Review and adjust in "Store Layout" section.', language));
-          sortShoppingList(); // Re-sort the list after auto-mapping
-        } else {
-          setAutoMappingError(t('AI returned unexpected format for auto-mapping.', language));
-          console.error('AI response format error:', suggestedMappings);
-        }
+        await setDoc(userLayoutDocRef, { sections: updatedLayout, userId: userId }, { merge: true });
+        setLayoutMessage(t('Auto-mapping complete! Review and adjust in "Store Layout" section.', language));
+        sortShoppingList();
       } else {
-        setAutoMappingError(t('Could not auto-map items. Unexpected AI response.', language));
+        setAutoMappingError(t('AI returned unexpected format for auto-mapping.', language));
         console.error('AI response error:', result);
       }
     } catch (error) {
@@ -619,12 +619,14 @@ ${rawShoppingList.join('\n')}`;
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
     body.position.y = 1;
     cartGroup.add(body);
+    bodyMaterialRef.current = bodyMaterial;
 
     // Handle
     const handleGeometry = new THREE.CylinderGeometry(0.1, 0.1, 2.5, 8);
     const handleMaterial = new THREE.MeshStandardMaterial({ color: darkMode ? 0x6a0dad : 0x00bcd4 });
     const handle = new THREE.Mesh(handleGeometry, handleMaterial);
     handle.rotation.z = Math.PI / 2;
+    handleMaterialRef.current = handleMaterial;
     handle.position.set(0, 2.2, 2.2);
     cartGroup.add(handle);
 
@@ -691,9 +693,17 @@ ${rawShoppingList.join('\n')}`;
       handleMaterial.dispose();
       wheelMaterial.dispose();
     };
-  }, [darkMode]);
+  }, []);
 
   // --- GSAP ScrollTrigger animations ---
+  useEffect(() => {
+    if (bodyMaterialRef.current) {
+      bodyMaterialRef.current.color.setHex(darkMode ? 0x4a4a4a : 0xcccccc);
+    }
+    if (handleMaterialRef.current) {
+      handleMaterialRef.current.color.setHex(darkMode ? 0x6a0dad : 0x00bcd4);
+    }
+  }, [darkMode]);
   useEffect(() => {
     if (!window.gsap || !window.ScrollTrigger) {
       console.warn('GSAP or ScrollTrigger not loaded yet for scroll animations.');
@@ -950,7 +960,7 @@ ${rawShoppingList.join('\n')}`;
             {/* 🤖 AI-powered actions */}
             <div className="grid grid-cols-1 gap-4 mb-6">
               <button
-                onClick={handleSuggestLayout}         /* wired here */
+                onClick={autoMapItems}         /* wired here */
                 disabled={
                   !firestoreReady ||
                   loadingAutoMapping ||
@@ -1252,29 +1262,5 @@ ${rawShoppingList.join('\n')}`;
       </footer>
     </div>
   );
-}
-async function handleSuggestLayout() {
-  if (!rawShoppingList.length) {
-    alert(t('No items in list to suggest layout for.', language));
-    return;
-  }
-  setLoadingAutoMapping(true);
-  try {
-    const resp = await fetch(`${API_BASE_URL}/api/autoMapItems`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: rawShoppingList.join('\n') })
-    });
-    if (!resp.ok) throw new Error(await resp.text());
-
-    const { sections, typos } = await resp.json();
-    // apply sections → storeLayout or sortedShoppingList here
-    console.log('AI sections', sections, 'typos', typos);
-  } catch (err) {
-    console.error(err);
-    alert(`${t('Auto-mapping failed:', language)} ${err.message}`);
-  } finally {
-    setLoadingAutoMapping(false);
-  }
 }
 export default App;
