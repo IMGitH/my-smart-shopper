@@ -555,32 +555,29 @@ ${rawShoppingList.join('\n')}`;
       const response = await fetch(`${API_BASE_URL}/api/autoMapItems`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt })
+        body: JSON.stringify({ prompt, items: rawShoppingList })
       });
 
       const result = await response.json();
 
-      let suggestedMappings = Array.isArray(result) ? result : null;
+      const { sections, typos } = result;
 
-      if (!suggestedMappings && result.candidates && result.candidates.length > 0 &&
-          result.candidates[0].content && result.candidates[0].content.parts &&
-          result.candidates[0].content.parts.length > 0) {
-        const jsonString = result.candidates[0].content.parts[0].text;
-        try { suggestedMappings = JSON.parse(jsonString); } catch { suggestedMappings = null; }
-      }
-
-      if (Array.isArray(suggestedMappings)) {
+      if (sections && typeof sections === 'object') {
         const userLayoutDocRef = doc(db, `artifacts/${appId}/users/${userId}/userStoreLayouts`, 'myLayout');
         const currentLayout = (await getDoc(userLayoutDocRef)).data()?.sections || {};
         let updatedLayout = { ...currentLayout };
 
-        suggestedMappings.forEach(mapping => {
-          const trimmedItem = mapping.item.trim();
-          const trimmedSection = mapping.section.trim();
+        Object.entries(sections).forEach(([item, section]) => {
+          const trimmedItem = item.trim();
+          const trimmedSection = section.trim();
           if (trimmedItem && trimmedSection && !updatedLayout[trimmedItem]) {
             updatedLayout[trimmedItem] = trimmedSection;
           }
         });
+
+        if (typos && typeof typos === 'object' && Object.keys(typos).length > 0) {
+          setRawShoppingList(prev => prev.map(it => typos[it] || it));
+        }
 
         await setDoc(userLayoutDocRef, { sections: updatedLayout, userId: userId }, { merge: true });
         setLayoutMessage(t('Auto-mapping complete! Review and adjust in "Store Layout" section.', language));

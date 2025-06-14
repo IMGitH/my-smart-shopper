@@ -41,15 +41,42 @@ async function callGemini(prompt, retries = 2) {
 
 /* ────────────────── Main POST endpoint ──────────── */
 app.post('/api/autoMapItems', async (req, res) => {
-  const { prompt } = req.body;
-  if (!prompt) return res.status(400).json({ error: 'Missing prompt' });
+  const { prompt, items } = req.body;
+  if (!prompt || !Array.isArray(items)) {
+    return res.status(400).json({ error: 'Missing prompt or items' });
+  }
 
   try {
     const raw = await callGemini(prompt);
-    let data;
-    try   { data = JSON.parse(raw.candidates[0].content.parts[0].text); }
-    catch { data = { error: 'Unexpected AI response', raw }; }
-    res.json(data);
+    let suggestions;
+    try {
+      suggestions = JSON.parse(raw.candidates[0].content.parts[0].text);
+    } catch {
+      return res.status(400).json({ error: 'Unexpected AI response', raw });
+    }
+
+    if (!Array.isArray(suggestions)) {
+      return res.status(400).json({ error: 'AI did not return an array', raw });
+    }
+
+    const sections = {};
+    const typos = {};
+    suggestions.forEach((sug, idx) => {
+      const original = (items[idx] || '').trim();
+      const corrected = (sug.item || '').trim();
+      const section = (sug.section || 'Miscellaneous').trim();
+      if (corrected) {
+        sections[corrected] = section;
+        if (
+          original &&
+          original.toLowerCase() !== corrected.toLowerCase()
+        ) {
+          typos[original] = corrected;
+        }
+      }
+    });
+
+    res.json({ sections, typos });
   } catch (err) {
     console.error(err);
     res.status(503).json({ error: 'Gemini temporarily unavailable' });

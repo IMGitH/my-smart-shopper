@@ -123,5 +123,5 @@ jobs:
       run: |
         echo "Testing Gemini endpoint"
         curl -s -X POST -H 'Content-Type: application/json' \
-          -d '{"prompt":"apple"}' "$BASE_URL/api/autoMapItems" | tee response.json
+          -d '{"prompt":"apple","items":["apple"]}' "$BASE_URL/api/autoMapItems" | tee response.json
         cat response.json
