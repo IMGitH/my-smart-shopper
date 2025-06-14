@@ -146,7 +146,8 @@ function App() {
   const sectionRefs = useRef([]);
   const bodyMaterialRef = useRef(null);
   const handleMaterialRef = useRef(null);
-  sectionRefs.current = [];
+  const ambientLightRef = useRef(null);
+  const directionalLightRef = useRef(null);
 
   // State for drag and drop
   const dragItem = useRef(null); // Index of the item being dragged
@@ -653,10 +654,12 @@ ${rawShoppingList.join('\n')}`;
     scene.add(cartGroup);
 
     // Lights
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    const ambientLight = new THREE.AmbientLight(0xffffff, darkMode ? 0.3 : 0.5);
+    ambientLightRef.current = ambientLight;
     scene.add(ambientLight);
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, darkMode ? 0.6 : 0.8);
     directionalLight.position.set(5, 5, 5).normalize();
+    directionalLightRef.current = directionalLight;
     scene.add(directionalLight);
 
     camera.position.z = 8;
@@ -700,6 +703,12 @@ ${rawShoppingList.join('\n')}`;
     if (handleMaterialRef.current) {
       handleMaterialRef.current.color.setHex(darkMode ? 0x6a0dad : 0x00bcd4);
     }
+    if (ambientLightRef.current) {
+      ambientLightRef.current.intensity = darkMode ? 0.3 : 0.5;
+    }
+    if (directionalLightRef.current) {
+      directionalLightRef.current.intensity = darkMode ? 0.6 : 0.8;
+    }
   }, [darkMode]);
   useEffect(() => {
     if (!window.gsap || !window.ScrollTrigger) {
@@ -730,7 +739,7 @@ ${rawShoppingList.join('\n')}`;
         window.ScrollTrigger.getAll().forEach(trigger => trigger.kill());
       }
     };
-  }, [sectionRefs.current]);
+  }, [language]);
 
   // --- Dynamic Cursor ---
   useEffect(() => {
@@ -834,7 +843,7 @@ ${rawShoppingList.join('\n')}`;
       {/* Dynamic Cursor */}
       <div
         ref={cursorRef}
-        className={`fixed z-50 pointer-events-none w-8 h-8 rounded-full mix-blend-difference opacity-70 transition-transform duration-100 ease-out ${language === 'he' ? 'left-auto right-1/2' : ''} ${darkMode ? 'bg-cyan-400' : 'bg-purple-600'}`}
+        className={`fixed z-50 pointer-events-none w-8 h-8 rounded-full mix-blend-difference opacity-70 transition-transform duration-100 ease-out ${darkMode ? 'bg-cyan-400' : 'bg-purple-600'}`}
         style={{ willChange: 'transform' }}
       ></div>
 
@@ -957,7 +966,7 @@ ${rawShoppingList.join('\n')}`;
             {/* 🤖 AI-powered actions */}
             <div className="grid grid-cols-1 gap-4 mb-6">
               <button
-                onClick={autoMapItems}         /* wired here */
+                onClick={autoMapItems}
                 disabled={
                   !firestoreReady ||
                   loadingAutoMapping ||
