@@ -107,7 +107,13 @@ const t = (k, lang) => translations[k]?.[lang] ?? k;
 function App() {
   // Global Firebase variables (provided by Canvas environment)
   const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-  const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+  const firebaseConfig = useMemo(
+    () =>
+      typeof __firebase_config !== 'undefined'
+        ? JSON.parse(__firebase_config)
+        : {},
+    []
+  );
   const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
   // Firebase state
@@ -144,7 +150,10 @@ function App() {
   const cursorRef = useRef(null);
   // Refs for sections to apply scroll animations
   const sectionRefs = useRef([]);
-  sectionRefs.current = [];
+  const bodyMaterialRef = useRef(null);
+  const handleMaterialRef = useRef(null);
+  const ambientLightRef = useRef(null);
+  const directionalLightRef = useRef(null);
 
   // State for drag and drop
   const dragItem = useRef(null); // Index of the item being dragged
@@ -441,7 +450,7 @@ function App() {
     } finally {
       setFirestoreLoading(false);
     }
-  }, [db, userId, appId, layoutItem, layoutSection, sortShoppingList, language]);
+  }, [db, userId, appId, layoutItem, layoutSection, sortShoppingList, language, firestoreReady]);
 
   const saveCurrentList = useCallback(async () => {
     if (!firestoreReady) {
@@ -477,7 +486,7 @@ function App() {
     } finally {
       setFirestoreLoading(false);
     }
-  }, [db, userId, appId, newListName, rawShoppingList, boughtItems, language]);
+  }, [db, userId, appId, newListName, rawShoppingList, boughtItems, language, firestoreReady]);
 
   const loadSelectedList = useCallback(async (listId) => {
     if (!firestoreReady) {
@@ -507,7 +516,7 @@ function App() {
     } finally {
       setFirestoreLoading(false);
     }
-  }, [db, userId, appId, language]);
+  }, [db, userId, appId, language, firestoreReady]);
 
   const deleteSavedList = useCallback(async (listId) => {
     if (!firestoreReady) {
@@ -527,7 +536,7 @@ function App() {
     } finally {
       setFirestoreLoading(false);
     }
-  }, [db, userId, appId, language]);
+  }, [db, userId, appId, language, firestoreReady]);
 
   // --- Gemini API Call for Auto-Mapping (NEW) ---
   const autoMapItems = useCallback(async () => {
@@ -553,40 +562,35 @@ ${rawShoppingList.join('\n')}`;
       const response = await fetch(`${API_BASE_URL}/api/autoMapItems`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt })
+        body: JSON.stringify({ prompt, items: rawShoppingList })
       });
 
       const result = await response.json();
 
-      if (result.candidates && result.candidates.length > 0 &&
-          result.candidates[0].content && result.candidates[0].content.parts &&
-          result.candidates[0].content.parts.length > 0) {
-        const jsonString = result.candidates[0].content.parts[0].text;
-        const suggestedMappings = JSON.parse(jsonString);
+      const { sections, typos } = result;
 
-        if (Array.isArray(suggestedMappings)) {
-          const userLayoutDocRef = doc(db, `artifacts/${appId}/users/${userId}/userStoreLayouts`, 'myLayout');
-          const currentLayout = (await getDoc(userLayoutDocRef)).data()?.sections || {};
-          let updatedLayout = { ...currentLayout };
+      if (sections && typeof sections === 'object') {
+        const userLayoutDocRef = doc(db, `artifacts/${appId}/users/${userId}/userStoreLayouts`, 'myLayout');
+        const currentLayout = (await getDoc(userLayoutDocRef)).data()?.sections || {};
+        let updatedLayout = { ...currentLayout };
 
-          suggestedMappings.forEach(mapping => {
-            // Only add if not already explicitly mapped by the user or if it's a new item
-            const trimmedItem = mapping.item.trim();
-            const trimmedSection = mapping.section.trim();
-            if (trimmedItem && trimmedSection && !updatedLayout[trimmedItem]) {
-              updatedLayout[trimmedItem] = trimmedSection;
-            }
-          });
+        Object.entries(sections).forEach(([item, section]) => {
+          const trimmedItem = item.trim();
+          const trimmedSection = section.trim();
+          if (trimmedItem && trimmedSection && !updatedLayout[trimmedItem]) {
+            updatedLayout[trimmedItem] = trimmedSection;
+          }
+        });
 
-          await setDoc(userLayoutDocRef, { sections: updatedLayout, userId: userId }, { merge: true });
-          setLayoutMessage(t('Auto-mapping complete! Review and adjust in "Store Layout" section.', language));
-          sortShoppingList(); // Re-sort the list after auto-mapping
-        } else {
-          setAutoMappingError(t('AI returned unexpected format for auto-mapping.', language));
-          console.error('AI response format error:', suggestedMappings);
+        if (typos && typeof typos === 'object' && Object.keys(typos).length > 0) {
+          setRawShoppingList(prev => prev.map(it => typos[it] || it));
         }
+
+        await setDoc(userLayoutDocRef, { sections: updatedLayout, userId: userId }, { merge: true });
+        setLayoutMessage(t('Auto-mapping complete! Review and adjust in "Store Layout" section.', language));
+        sortShoppingList();
       } else {
-        setAutoMappingError(t('Could not auto-map items. Unexpected AI response.', language));
+        setAutoMappingError(t('AI returned unexpected format for auto-mapping.', language));
         console.error('AI response error:', result);
       }
     } catch (error) {
@@ -595,7 +599,7 @@ ${rawShoppingList.join('\n')}`;
     } finally {
       setLoadingAutoMapping(false);
     }
-  }, [rawShoppingList, db, userId, appId, sortShoppingList, language]);
+  }, [rawShoppingList, db, userId, appId, sortShoppingList, language, firestoreReady]);
 
 
   // --- Three.js Scene (Adapted for Shopping Theme) ---
@@ -619,12 +623,14 @@ ${rawShoppingList.join('\n')}`;
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
     body.position.y = 1;
     cartGroup.add(body);
+    bodyMaterialRef.current = bodyMaterial;
 
     // Handle
     const handleGeometry = new THREE.CylinderGeometry(0.1, 0.1, 2.5, 8);
     const handleMaterial = new THREE.MeshStandardMaterial({ color: darkMode ? 0x6a0dad : 0x00bcd4 });
     const handle = new THREE.Mesh(handleGeometry, handleMaterial);
     handle.rotation.z = Math.PI / 2;
+    handleMaterialRef.current = handleMaterial;
     handle.position.set(0, 2.2, 2.2);
     cartGroup.add(handle);
 
@@ -654,10 +660,12 @@ ${rawShoppingList.join('\n')}`;
     scene.add(cartGroup);
 
     // Lights
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    const ambientLight = new THREE.AmbientLight(0xffffff, darkMode ? 0.3 : 0.5);
+    ambientLightRef.current = ambientLight;
     scene.add(ambientLight);
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, darkMode ? 0.6 : 0.8);
     directionalLight.position.set(5, 5, 5).normalize();
+    directionalLightRef.current = directionalLight;
     scene.add(directionalLight);
 
     camera.position.z = 8;
@@ -686,14 +694,28 @@ ${rawShoppingList.join('\n')}`;
       renderer.dispose();
       bodyGeometry.dispose();
       handleGeometry.dispose();
-      wheelGeometry.dispose();
-      bodyMaterial.dispose();
-      handleMaterial.dispose();
-      wheelMaterial.dispose();
-    };
-  }, [darkMode]);
+    wheelGeometry.dispose();
+    bodyMaterial.dispose();
+    handleMaterial.dispose();
+    wheelMaterial.dispose();
+  };
+}, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // --- GSAP ScrollTrigger animations ---
+  useEffect(() => {
+    if (bodyMaterialRef.current) {
+      bodyMaterialRef.current.color.setHex(darkMode ? 0x4a4a4a : 0xcccccc);
+    }
+    if (handleMaterialRef.current) {
+      handleMaterialRef.current.color.setHex(darkMode ? 0x6a0dad : 0x00bcd4);
+    }
+    if (ambientLightRef.current) {
+      ambientLightRef.current.intensity = darkMode ? 0.3 : 0.5;
+    }
+    if (directionalLightRef.current) {
+      directionalLightRef.current.intensity = darkMode ? 0.6 : 0.8;
+    }
+  }, [darkMode]);
   useEffect(() => {
     if (!window.gsap || !window.ScrollTrigger) {
       console.warn('GSAP or ScrollTrigger not loaded yet for scroll animations.');
@@ -723,7 +745,7 @@ ${rawShoppingList.join('\n')}`;
         window.ScrollTrigger.getAll().forEach(trigger => trigger.kill());
       }
     };
-  }, [sectionRefs.current]);
+  }, [language]);
 
   // --- Dynamic Cursor ---
   useEffect(() => {
@@ -827,7 +849,7 @@ ${rawShoppingList.join('\n')}`;
       {/* Dynamic Cursor */}
       <div
         ref={cursorRef}
-        className={`fixed z-50 pointer-events-none w-8 h-8 rounded-full mix-blend-difference opacity-70 transition-transform duration-100 ease-out ${language === 'he' ? 'left-auto right-1/2' : ''} ${darkMode ? 'bg-cyan-400' : 'bg-purple-600'}`}
+        className={`fixed z-50 pointer-events-none w-8 h-8 rounded-full mix-blend-difference opacity-70 transition-transform duration-100 ease-out ${darkMode ? 'bg-cyan-400' : 'bg-purple-600'}`}
         style={{ willChange: 'transform' }}
       ></div>
 
@@ -950,7 +972,7 @@ ${rawShoppingList.join('\n')}`;
             {/* 🤖 AI-powered actions */}
             <div className="grid grid-cols-1 gap-4 mb-6">
               <button
-                onClick={handleSuggestLayout}         /* wired here */
+                onClick={autoMapItems}
                 disabled={
                   !firestoreReady ||
                   loadingAutoMapping ||
@@ -1252,29 +1274,5 @@ ${rawShoppingList.join('\n')}`;
       </footer>
     </div>
   );
-}
-async function handleSuggestLayout() {
-  if (!rawShoppingList.length) {
-    alert(t('No items in list to suggest layout for.', language));
-    return;
-  }
-  setLoadingAutoMapping(true);
-  try {
-    const resp = await fetch(`${API_BASE_URL}/api/autoMapItems`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: rawShoppingList.join('\n') })
-    });
-    if (!resp.ok) throw new Error(await resp.text());
-
-    const { sections, typos } = await resp.json();
-    // apply sections → storeLayout or sortedShoppingList here
-    console.log('AI sections', sections, 'typos', typos);
-  } catch (err) {
-    console.error(err);
-    alert(`${t('Auto-mapping failed:', language)} ${err.message}`);
-  } finally {
-    setLoadingAutoMapping(false);
-  }
 }
 export default App;

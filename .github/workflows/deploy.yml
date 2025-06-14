@@ -112,3 +112,30 @@ jobs:
           esac
         done
         echo "❌ Backend never reached 200 within 2 min"; exit 1
+
+    - name: Debug Gemini autoMapItems
+      if: env.CHANNEL_ID == 'live' || steps.deploy_preview.outcome == 'success'
+      env:
+        BASE_URL: >-
+          ${{ env.CHANNEL_ID == 'live'
+                && 'https://my-smart-shopper-e0c23.web.app'
+              || steps.deploy_preview.outputs.details_url }}
+      run: |
+        echo "Testing Gemini endpoint"
+        curl -s -X POST -H 'Content-Type: application/json' \
+          -d '{"prompt":"apple","items":["apple"]}' "$BASE_URL/api/autoMapItems" | tee response.json
+        cat response.json
+
+    - name: Debug Gemini typo handling
+      if: env.CHANNEL_ID == 'live' || steps.deploy_preview.outcome == 'success'
+      env:
+        BASE_URL: >-
+          ${{ env.CHANNEL_ID == 'live'
+                && 'https://my-smart-shopper-e0c23.web.app'
+              || steps.deploy_preview.outputs.details_url }}
+      run: |
+        echo "Testing Gemini endpoint with typo"
+        curl -s -X POST -H 'Content-Type: application/json' \
+          -d '{"prompt":"bnna","items":["bnna"]}' "$BASE_URL/api/autoMapItems" \
+          | tee typo_response.json
+        cat typo_response.json
