@@ -107,7 +107,13 @@ const t = (k, lang) => translations[k]?.[lang] ?? k;
 function App() {
   // Global Firebase variables (provided by Canvas environment)
   const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-  const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+  const firebaseConfig = useMemo(
+    () =>
+      typeof __firebase_config !== 'undefined'
+        ? JSON.parse(__firebase_config)
+        : {},
+    []
+  );
   const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
   // Firebase state
@@ -444,7 +450,7 @@ function App() {
     } finally {
       setFirestoreLoading(false);
     }
-  }, [db, userId, appId, layoutItem, layoutSection, sortShoppingList, language]);
+  }, [db, userId, appId, layoutItem, layoutSection, sortShoppingList, language, firestoreReady]);
 
   const saveCurrentList = useCallback(async () => {
     if (!firestoreReady) {
@@ -480,7 +486,7 @@ function App() {
     } finally {
       setFirestoreLoading(false);
     }
-  }, [db, userId, appId, newListName, rawShoppingList, boughtItems, language]);
+  }, [db, userId, appId, newListName, rawShoppingList, boughtItems, language, firestoreReady]);
 
   const loadSelectedList = useCallback(async (listId) => {
     if (!firestoreReady) {
@@ -510,7 +516,7 @@ function App() {
     } finally {
       setFirestoreLoading(false);
     }
-  }, [db, userId, appId, language]);
+  }, [db, userId, appId, language, firestoreReady]);
 
   const deleteSavedList = useCallback(async (listId) => {
     if (!firestoreReady) {
@@ -530,7 +536,7 @@ function App() {
     } finally {
       setFirestoreLoading(false);
     }
-  }, [db, userId, appId, language]);
+  }, [db, userId, appId, language, firestoreReady]);
 
   // --- Gemini API Call for Auto-Mapping (NEW) ---
   const autoMapItems = useCallback(async () => {
@@ -593,7 +599,7 @@ ${rawShoppingList.join('\n')}`;
     } finally {
       setLoadingAutoMapping(false);
     }
-  }, [rawShoppingList, db, userId, appId, sortShoppingList, language]);
+  }, [rawShoppingList, db, userId, appId, sortShoppingList, language, firestoreReady]);
 
 
   // --- Three.js Scene (Adapted for Shopping Theme) ---
@@ -688,12 +694,12 @@ ${rawShoppingList.join('\n')}`;
       renderer.dispose();
       bodyGeometry.dispose();
       handleGeometry.dispose();
-      wheelGeometry.dispose();
-      bodyMaterial.dispose();
-      handleMaterial.dispose();
-      wheelMaterial.dispose();
-    };
-  }, []);
+    wheelGeometry.dispose();
+    bodyMaterial.dispose();
+    handleMaterial.dispose();
+    wheelMaterial.dispose();
+  };
+}, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // --- GSAP ScrollTrigger animations ---
   useEffect(() => {
