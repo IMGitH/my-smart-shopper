@@ -112,3 +112,30 @@ jobs:
           esac
         done
         echo "❌ Backend never reached 200 within 2 min"; exit 1
+
+    - name: Smoke-test /api/autoMapItems
+      if: env.CHANNEL_ID == 'live' || steps.deploy_preview.outcome == 'success'
+      env:
+        BASE_URL: >-
+          ${{ env.CHANNEL_ID == 'live'
+                && 'https://my-smart-shopper-e0c23.web.app'
+              || steps.deploy_preview.outputs.details_url }}
+      run: |
+        echo "🔄 Pinging $BASE_URL/api/autoMapItems"
+        for i in {1..24}; do
+          STATUS=$(curl -s -L -o /dev/null -w '%{http_code}' \
+                   -X POST -H 'Content-Type: application/json' \
+                   -d '{"prompt":"apple"}' \
+                   "$BASE_URL/api/autoMapItems")
+
+          if [ "$STATUS" = 200 ]; then
+            echo "✅ Gemini endpoint ready (HTTP 200)"; exit 0
+          fi
+
+          case "$STATUS" in 307|404|502|503)
+            echo "   still $STATUS (try $i/24)…"; sleep 5 ;;
+          *)
+            echo "❌ Unexpected HTTP $STATUS"; exit 1 ;;
+          esac
+        done
+        echo "❌ Gemini endpoint never reached 200 within 2 min"; exit 1

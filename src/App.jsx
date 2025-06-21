@@ -950,7 +950,7 @@ ${rawShoppingList.join('\n')}`;
             {/* 🤖 AI-powered actions */}
             <div className="grid grid-cols-1 gap-4 mb-6">
               <button
-                onClick={handleSuggestLayout}         /* wired here */
+                onClick={autoMapItems}
                 disabled={
                   !firestoreReady ||
                   loadingAutoMapping ||
@@ -1252,29 +1252,5 @@ ${rawShoppingList.join('\n')}`;
       </footer>
     </div>
   );
-}
-async function handleSuggestLayout() {
-  if (!rawShoppingList.length) {
-    alert(t('No items in list to suggest layout for.', language));
-    return;
-  }
-  setLoadingAutoMapping(true);
-  try {
-    const resp = await fetch(`${API_BASE_URL}/api/autoMapItems`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: rawShoppingList.join('\n') })
-    });
-    if (!resp.ok) throw new Error(await resp.text());
-
-    const { sections, typos } = await resp.json();
-    // apply sections → storeLayout or sortedShoppingList here
-    console.log('AI sections', sections, 'typos', typos);
-  } catch (err) {
-    console.error(err);
-    alert(`${t('Auto-mapping failed:', language)} ${err.message}`);
-  } finally {
-    setLoadingAutoMapping(false);
-  }
 }
 export default App;
