@@ -106,9 +106,26 @@ const t = (k, lang) => translations[k]?.[lang] ?? k;
 // Main App Component
 function App() {
   // Global Firebase variables (provided by Canvas environment)
-  const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-  const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-  const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+  const appId =
+    typeof __app_id !== 'undefined'
+      ? __app_id
+      : import.meta.env.VITE_FIREBASE_APP_ID || 'default-app-id';
+
+  const firebaseConfig =
+    typeof __firebase_config !== 'undefined'
+      ? JSON.parse(__firebase_config)
+      : {
+          apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+          authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+          projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+          storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+          messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+          appId: import.meta.env.VITE_FIREBASE_APP_ID,
+          measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
+        };
+
+  const initialAuthToken =
+    typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
   // Firebase state
   const [db, setDb] = useState(null);
