@@ -137,6 +137,8 @@ function App() {
   // AI-related states for auto-mapping
   const [loadingAutoMapping, setLoadingAutoMapping] = useState(false);
   const [autoMappingError, setAutoMappingError] = useState('');
+  // Hold items awaiting auto-mapping until Firestore is ready
+  const pendingAutoMap = useRef(null);
 
   // Ref for the 3D canvas
   const mountRef = useRef(null);
@@ -542,7 +544,8 @@ function App() {
       return;
     }
     if (!firestoreReady) {
-      setAutoMappingError(t('Firestore not ready for auto-mapping. Please wait for authentication.', language));
+      pendingAutoMap.current = items;
+      setAutoMappingError(t('Firestore not ready for auto-mapping. It will run automatically once ready.', language));
       return;
     }
 
@@ -584,6 +587,8 @@ ${items.join('\n')}`;
             }
           });
 
+          // Update local layout immediately and persist to Firestore
+          setStoreLayout(updatedLayout);
           await setDoc(userLayoutDocRef, { sections: updatedLayout, userId: userId }, { merge: true });
           setLayoutMessage(t('Auto-mapping complete! Review and adjust in "Store Layout" section.', language));
           sortShoppingList(); // Re-sort the list after auto-mapping
@@ -602,6 +607,15 @@ ${items.join('\n')}`;
       setLoadingAutoMapping(false);
     }
   }, [rawShoppingList, db, userId, appId, sortShoppingList, language, firestoreReady]);
+
+  // If auto-mapping was attempted before Firestore was ready, run it now
+  useEffect(() => {
+    if (firestoreReady && pendingAutoMap.current) {
+      const items = pendingAutoMap.current;
+      pendingAutoMap.current = null;
+      autoMapItems(items);
+    }
+  }, [firestoreReady, autoMapItems]);
 
 
   // --- Three.js Scene (Adapted for Shopping Theme) ---
