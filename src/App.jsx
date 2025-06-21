@@ -970,7 +970,7 @@ ${items.join('\n')}`;
             {/* 🤖 AI-powered actions */}
             <div className="grid grid-cols-1 gap-4 mb-6">
               <button
-                onClick={autoMapItems}
+                onClick={() => autoMapItems()}
                 disabled={
                   !firestoreReady ||
                   loadingAutoMapping ||
