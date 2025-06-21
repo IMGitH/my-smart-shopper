@@ -280,9 +280,15 @@ function App() {
     const newItems = shoppingListInput.split('\n')
       .map(item => item.trim())
       .filter(item => item.length > 0);
-    setRawShoppingList(prev => [...prev, ...newItems]);
+    if (newItems.length === 0) return;
+
+    const updated = [...rawShoppingList, ...newItems];
+    setRawShoppingList(updated);
     setShoppingListInput('');
-  }, [shoppingListInput]);
+
+    // Trigger AI mapping right away if possible
+    autoMapItems(updated);
+  }, [shoppingListInput, rawShoppingList, autoMapItems]);
 
   const sortShoppingList = useCallback(() => {
     const newSortedList = {};
@@ -530,8 +536,8 @@ function App() {
   }, [db, userId, appId, language]);
 
   // --- Gemini API Call for Auto-Mapping (NEW) ---
-  const autoMapItems = useCallback(async () => {
-    if (rawShoppingList.length === 0) {
+  const autoMapItems = useCallback(async (items = rawShoppingList) => {
+    if (items.length === 0) {
       setAutoMappingError(t('No items in list to suggest layout for.', language));
       return;
     }
@@ -544,10 +550,10 @@ function App() {
     setAutoMappingError('');
 
     try {
-      const prompt = `For the following list of grocery items, suggest a common supermarket section for each item. Respond with a JSON array of objects, where each object has 'item' and 'section' keys. If an item doesn't fit a common section, use 'Miscellaneous'.
+    const prompt = `For the following list of grocery items, suggest a common supermarket section for each item. Respond with a JSON array of objects, where each object has 'item' and 'section' keys. If an item doesn't fit a common section, use 'Miscellaneous'.
 
 Items:
-${rawShoppingList.join('\n')}`;
+${items.join('\n')}`;
 
 
       const response = await fetch(`${API_BASE_URL}/api/autoMapItems`, {
@@ -595,7 +601,7 @@ ${rawShoppingList.join('\n')}`;
     } finally {
       setLoadingAutoMapping(false);
     }
-  }, [rawShoppingList, db, userId, appId, sortShoppingList, language]);
+  }, [rawShoppingList, db, userId, appId, sortShoppingList, language, firestoreReady]);
 
 
   // --- Three.js Scene (Adapted for Shopping Theme) ---
