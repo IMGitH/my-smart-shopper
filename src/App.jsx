@@ -109,7 +109,7 @@ function App() {
   const appId =
     typeof __app_id !== 'undefined'
       ? __app_id
-      : import.meta.env.VITE_FIREBASE_APP_ID || 'default-app-id';
+      : import.meta.env.VITE_FIREBASE_APP_ID;
 
   const firebaseConfig =
     typeof __firebase_config !== 'undefined'
@@ -303,13 +303,13 @@ function App() {
 
   // --- Core Shopping List Logic ---
 
-  const sortShoppingList = useCallback(() => {
+  const sortShoppingList = useCallback((layout = storeLayout) => {
     const newSortedList = {};
     const uncategorized = [];
 
     rawShoppingList.forEach(item => {
       // Find a section where the item (case-insensitive) matches any part of the layout item key
-    const foundSection = Object.entries(storeLayout).find(([layoutItemKey]) =>
+    const foundSection = Object.entries(layout).find(([layoutItemKey]) =>
       item.toLowerCase().includes(layoutItemKey.toLowerCase())
     );
 
@@ -449,7 +449,7 @@ ${items.join('\n')}`;
           setStoreLayout(updatedLayout);
           await setDoc(userLayoutDocRef, { sections: updatedLayout, userId: userId }, { merge: true });
           setLayoutMessage(t('Auto-mapping complete! Review and adjust in "Store Layout" section.', language));
-          sortShoppingList(); // Re-sort the list after auto-mapping
+          sortShoppingList(updatedLayout); // Re-sort with new layout
         } else {
           setAutoMappingError(t('AI returned unexpected format for auto-mapping.', language));
           console.error('AI response format error:', suggestedMappings);
@@ -547,10 +547,11 @@ ${items.join('\n')}`;
         [layoutItem.trim()]: layoutSection.trim()
       };
       await setDoc(userLayoutDocRef, { sections: updatedLayout, userId: userId }, { merge: true });
+      setStoreLayout(updatedLayout);
       setLayoutItem('');
       setLayoutSection('');
       setLayoutMessage(t('Mapping updated successfully!', language));
-      sortShoppingList(); // Re-sort the list immediately after updating layout
+      sortShoppingList(updatedLayout); // Re-sort with new layout
     } catch (error) {
       console.error("Error updating store layout:", error);
       setLayoutMessage(`${t('Failed to update layout:', language)} ${error.message}`);
