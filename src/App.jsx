@@ -106,9 +106,26 @@ const t = (k, lang) => translations[k]?.[lang] ?? k;
 // Main App Component
 function App() {
   // Global Firebase variables (provided by Canvas environment)
-  const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-  const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-  const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+  const appId =
+    typeof __app_id !== 'undefined'
+      ? __app_id
+      : import.meta.env.VITE_FIREBASE_APP_ID;
+
+  const firebaseConfig =
+    typeof __firebase_config !== 'undefined'
+      ? JSON.parse(__firebase_config)
+      : {
+          apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+          authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+          projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+          storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+          messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+          appId: import.meta.env.VITE_FIREBASE_APP_ID,
+          measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
+        };
+
+  const initialAuthToken =
+    typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
   // Firebase state
   const [db, setDb] = useState(null);
@@ -137,6 +154,8 @@ function App() {
   // AI-related states for auto-mapping
   const [loadingAutoMapping, setLoadingAutoMapping] = useState(false);
   const [autoMappingError, setAutoMappingError] = useState('');
+  // Hold items awaiting auto-mapping until Firestore is ready
+  const pendingAutoMap = useRef(null);
 
   // Ref for the 3D canvas
   const mountRef = useRef(null);
@@ -167,13 +186,21 @@ function App() {
     setLanguage(prevLang => prevLang === 'en' ? 'he' : 'en');
   };
 
-  const firebaseEnabled = Boolean(firebaseConfig?.projectId);
+  const firebaseEnabled = Boolean(
+    firebaseConfig?.apiKey &&
+    firebaseConfig?.authDomain &&
+    firebaseConfig?.projectId &&
+    firebaseConfig?.appId
+  );
   const firestoreReady = useMemo(() => db && userId && isAuthReady, [db, userId, isAuthReady]);
 
   // --- Firebase Initialization and Auth ---
   useEffect(() => {
     if (!firebaseEnabled) {
       console.warn('Firebase config missing; skipping initialization.');
+      setFirestoreError(
+        t('Firebase init failed:', language) + ' Missing configuration.'
+      );
       return;
     }
 
@@ -276,21 +303,13 @@ function App() {
 
   // --- Core Shopping List Logic ---
 
-  const addItemsToList = useCallback(() => {
-    const newItems = shoppingListInput.split('\n')
-      .map(item => item.trim())
-      .filter(item => item.length > 0);
-    setRawShoppingList(prev => [...prev, ...newItems]);
-    setShoppingListInput('');
-  }, [shoppingListInput]);
-
-  const sortShoppingList = useCallback(() => {
+  const sortShoppingList = useCallback((layout = storeLayout) => {
     const newSortedList = {};
     const uncategorized = [];
 
     rawShoppingList.forEach(item => {
       // Find a section where the item (case-insensitive) matches any part of the layout item key
-    const foundSection = Object.entries(storeLayout).find(([layoutItemKey]) =>
+    const foundSection = Object.entries(layout).find(([layoutItemKey]) =>
       item.toLowerCase().includes(layoutItemKey.toLowerCase())
     );
 
@@ -373,6 +392,103 @@ function App() {
 
   }, [rawShoppingList, storeLayout, sectionOrder, boughtItems, db, userId, appId, language]); // Added boughtItems to dependencies
 
+  const autoMapItems = useCallback(async (items = rawShoppingList) => {
+    if (items.length === 0) {
+      setAutoMappingError(t('No items in list to suggest layout for.', language));
+      return;
+    }
+    if (!firebaseEnabled) {
+      setAutoMappingError('Firebase configuration missing.');
+      return;
+    }
+    if (!firestoreReady) {
+      pendingAutoMap.current = items;
+      setAutoMappingError(t('Firestore not ready for auto-mapping. It will run automatically once ready.', language));
+      return;
+    }
+
+    setLoadingAutoMapping(true);
+    setAutoMappingError('');
+
+    try {
+    const prompt = `For the following list of grocery items, suggest a common supermarket section for each item. Respond with a JSON array of objects, where each object has 'item' and 'section' keys. If an item doesn't fit a common section, use 'Miscellaneous'.
+
+Items:
+${items.join('\n')}`;
+
+
+      const response = await fetch(`${API_BASE_URL}/api/autoMapItems`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt })
+      });
+
+      const result = await response.json();
+
+      if (result.candidates && result.candidates.length > 0 &&
+          result.candidates[0].content && result.candidates[0].content.parts &&
+          result.candidates[0].content.parts.length > 0) {
+        const jsonString = result.candidates[0].content.parts[0].text;
+        const suggestedMappings = JSON.parse(jsonString);
+
+        if (Array.isArray(suggestedMappings)) {
+          const userLayoutDocRef = doc(db, `artifacts/${appId}/users/${userId}/userStoreLayouts`, 'myLayout');
+          const currentLayout = (await getDoc(userLayoutDocRef)).data()?.sections || {};
+          let updatedLayout = { ...currentLayout };
+
+          suggestedMappings.forEach(mapping => {
+            // Only add if not already explicitly mapped by the user or if it's a new item
+            const trimmedItem = mapping.item.trim();
+            const trimmedSection = mapping.section.trim();
+            if (trimmedItem && trimmedSection && !updatedLayout[trimmedItem]) {
+              updatedLayout[trimmedItem] = trimmedSection;
+            }
+          });
+
+          // Update local layout immediately and persist to Firestore
+          setStoreLayout(updatedLayout);
+          await setDoc(userLayoutDocRef, { sections: updatedLayout, userId: userId }, { merge: true });
+          setLayoutMessage(t('Auto-mapping complete! Review and adjust in "Store Layout" section.', language));
+          sortShoppingList(updatedLayout); // Re-sort with new layout
+        } else {
+          setAutoMappingError(t('AI returned unexpected format for auto-mapping.', language));
+          console.error('AI response format error:', suggestedMappings);
+        }
+      } else {
+        setAutoMappingError(t('Could not auto-map items. Unexpected AI response.', language));
+        console.error('AI response error:', result);
+      }
+    } catch (error) {
+      setAutoMappingError(`${t('Auto-mapping failed:', language)} ${error.message}`);
+      console.error('Fetch error for auto-mapping:', error);
+    } finally {
+      setLoadingAutoMapping(false);
+    }
+  }, [rawShoppingList, db, userId, appId, sortShoppingList, language, firestoreReady]);
+
+  // If auto-mapping was attempted before Firestore was ready, run it now
+  useEffect(() => {
+    if (firestoreReady && pendingAutoMap.current) {
+      const items = pendingAutoMap.current;
+      pendingAutoMap.current = null;
+      autoMapItems(items);
+    }
+  }, [firestoreReady, autoMapItems]);
+
+  const addItemsToList = useCallback(() => {
+    const newItems = shoppingListInput.split('\n')
+      .map(item => item.trim())
+      .filter(item => item.length > 0);
+    if (newItems.length === 0) return;
+
+    const updated = [...rawShoppingList, ...newItems];
+    setRawShoppingList(updated);
+    setShoppingListInput('');
+
+    // Trigger AI mapping right away if possible
+    autoMapItems(updated);
+  }, [shoppingListInput, rawShoppingList, autoMapItems]);
+
   const clearList = useCallback(() => {
     setRawShoppingList([]);
     setSortedShoppingList({});
@@ -431,10 +547,11 @@ function App() {
         [layoutItem.trim()]: layoutSection.trim()
       };
       await setDoc(userLayoutDocRef, { sections: updatedLayout, userId: userId }, { merge: true });
+      setStoreLayout(updatedLayout);
       setLayoutItem('');
       setLayoutSection('');
       setLayoutMessage(t('Mapping updated successfully!', language));
-      sortShoppingList(); // Re-sort the list immediately after updating layout
+      sortShoppingList(updatedLayout); // Re-sort with new layout
     } catch (error) {
       console.error("Error updating store layout:", error);
       setLayoutMessage(`${t('Failed to update layout:', language)} ${error.message}`);
@@ -528,75 +645,6 @@ function App() {
       setFirestoreLoading(false);
     }
   }, [db, userId, appId, language]);
-
-  // --- Gemini API Call for Auto-Mapping (NEW) ---
-  const autoMapItems = useCallback(async () => {
-    if (rawShoppingList.length === 0) {
-      setAutoMappingError(t('No items in list to suggest layout for.', language));
-      return;
-    }
-    if (!firestoreReady) {
-      setAutoMappingError(t('Firestore not ready for auto-mapping. Please wait for authentication.', language));
-      return;
-    }
-
-    setLoadingAutoMapping(true);
-    setAutoMappingError('');
-
-    try {
-      const prompt = `For the following list of grocery items, suggest a common supermarket section for each item. Respond with a JSON array of objects, where each object has 'item' and 'section' keys. If an item doesn't fit a common section, use 'Miscellaneous'.
-
-Items:
-${rawShoppingList.join('\n')}`;
-
-
-      const response = await fetch(`${API_BASE_URL}/api/autoMapItems`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt })
-      });
-
-      const result = await response.json();
-
-      if (result.candidates && result.candidates.length > 0 &&
-          result.candidates[0].content && result.candidates[0].content.parts &&
-          result.candidates[0].content.parts.length > 0) {
-        const jsonString = result.candidates[0].content.parts[0].text;
-        const suggestedMappings = JSON.parse(jsonString);
-
-        if (Array.isArray(suggestedMappings)) {
-          const userLayoutDocRef = doc(db, `artifacts/${appId}/users/${userId}/userStoreLayouts`, 'myLayout');
-          const currentLayout = (await getDoc(userLayoutDocRef)).data()?.sections || {};
-          let updatedLayout = { ...currentLayout };
-
-          suggestedMappings.forEach(mapping => {
-            // Only add if not already explicitly mapped by the user or if it's a new item
-            const trimmedItem = mapping.item.trim();
-            const trimmedSection = mapping.section.trim();
-            if (trimmedItem && trimmedSection && !updatedLayout[trimmedItem]) {
-              updatedLayout[trimmedItem] = trimmedSection;
-            }
-          });
-
-          await setDoc(userLayoutDocRef, { sections: updatedLayout, userId: userId }, { merge: true });
-          setLayoutMessage(t('Auto-mapping complete! Review and adjust in "Store Layout" section.', language));
-          sortShoppingList(); // Re-sort the list after auto-mapping
-        } else {
-          setAutoMappingError(t('AI returned unexpected format for auto-mapping.', language));
-          console.error('AI response format error:', suggestedMappings);
-        }
-      } else {
-        setAutoMappingError(t('Could not auto-map items. Unexpected AI response.', language));
-        console.error('AI response error:', result);
-      }
-    } catch (error) {
-      setAutoMappingError(`${t('Auto-mapping failed:', language)} ${error.message}`);
-      console.error('Fetch error for auto-mapping:', error);
-    } finally {
-      setLoadingAutoMapping(false);
-    }
-  }, [rawShoppingList, db, userId, appId, sortShoppingList, language]);
-
 
   // --- Three.js Scene (Adapted for Shopping Theme) ---
   useEffect(() => {
@@ -950,7 +998,7 @@ ${rawShoppingList.join('\n')}`;
             {/* 🤖 AI-powered actions */}
             <div className="grid grid-cols-1 gap-4 mb-6">
               <button
-                onClick={handleSuggestLayout}         /* wired here */
+                onClick={() => autoMapItems()}
                 disabled={
                   !firestoreReady ||
                   loadingAutoMapping ||
@@ -1252,29 +1300,5 @@ ${rawShoppingList.join('\n')}`;
       </footer>
     </div>
   );
-}
-async function handleSuggestLayout() {
-  if (!rawShoppingList.length) {
-    alert(t('No items in list to suggest layout for.', language));
-    return;
-  }
-  setLoadingAutoMapping(true);
-  try {
-    const resp = await fetch(`${API_BASE_URL}/api/autoMapItems`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: rawShoppingList.join('\n') })
-    });
-    if (!resp.ok) throw new Error(await resp.text());
-
-    const { sections, typos } = await resp.json();
-    // apply sections → storeLayout or sortedShoppingList here
-    console.log('AI sections', sections, 'typos', typos);
-  } catch (err) {
-    console.error(err);
-    alert(`${t('Auto-mapping failed:', language)} ${err.message}`);
-  } finally {
-    setLoadingAutoMapping(false);
-  }
 }
 export default App;

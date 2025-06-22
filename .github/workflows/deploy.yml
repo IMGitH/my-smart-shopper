@@ -16,6 +16,10 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      checks: write
 
     # ── Channel name logic ──────────────────────────────────────────────
     env:
@@ -43,6 +47,35 @@ jobs:
         path: ~/.npm
         key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
 
+    - name: Verify required secrets
+      run: |
+          missing=0
+          for var in \
+            VITE_FIREBASE_API_KEY \
+            VITE_FIREBASE_AUTH_DOMAIN \
+            VITE_FIREBASE_STORAGE_BUCKET \
+            VITE_FIREBASE_MESSAGING_SENDER_ID \
+            VITE_FIREBASE_APP_ID \
+            VITE_FIREBASE_MEASUREMENT_ID \
+            FIREBASE_SERVICE_ACCOUNT \
+            GEMINI_API_KEY \
+            VITE_BACKEND_URL; do
+            if [ -z "${!var}" ]; then
+              echo "Missing required secret: $var"; missing=1;
+            fi
+          done
+          [ "$missing" = 0 ]
+        env:
+          VITE_FIREBASE_API_KEY:        ${{ secrets.FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN:    ${{ secrets.FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID:         ${{ secrets.FIREBASE_APP_ID }}
+          VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.FIREBASE_MEASUREMENT_ID }}
+          FIREBASE_SERVICE_ACCOUNT:     ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          GEMINI_API_KEY:               ${{ secrets.GEMINI_API_KEY }}
+          VITE_BACKEND_URL:             ${{ secrets.VITE_BACKEND_URL }}
+
     - name: Install deps & build
       run: |
         npm ci
@@ -52,9 +85,9 @@ jobs:
         VITE_FIREBASE_API_KEY:        ${{ secrets.FIREBASE_API_KEY }}
         VITE_FIREBASE_AUTH_DOMAIN:    ${{ secrets.FIREBASE_AUTH_DOMAIN }}
         VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET }}
-        VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+        VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
         VITE_FIREBASE_APP_ID:         ${{ secrets.FIREBASE_APP_ID }}
-        VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
+        VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.FIREBASE_MEASUREMENT_ID }}
         VITE_BACKEND_URL:             ${{ secrets.VITE_BACKEND_URL }}
 
     # ── 2 · Deploy (preview or prod) ────────────────────────────────────
@@ -112,3 +145,54 @@ jobs:
           esac
         done
         echo "❌ Backend never reached 200 within 2 min"; exit 1
+
+    - name: Smoke-test /api/autoMapItems
+      if: env.CHANNEL_ID == 'live' || steps.deploy_preview.outcome == 'success'
+      env:
+        BASE_URL: >-
+          ${{ env.CHANNEL_ID == 'live'
+                && 'https://my-smart-shopper-e0c23.web.app'
+              || steps.deploy_preview.outputs.details_url }}
+      run: |
+        echo "🔄 Pinging $BASE_URL/api/autoMapItems"
+        for i in {1..24}; do
+          STATUS=$(curl -s -L -o /dev/null -w '%{http_code}' \
+                   -X POST -H 'Content-Type: application/json' \
+                   -d '{"prompt":"apple"}' \
+                   "$BASE_URL/api/autoMapItems")
+
+          if [ "$STATUS" = 200 ]; then
+            echo "✅ Gemini endpoint ready (HTTP 200)"; exit 0
+          fi
+
+          case "$STATUS" in 307|404|502|503)
+            echo "   still $STATUS (try $i/24)…"; sleep 5 ;;
+          *)
+            echo "❌ Unexpected HTTP $STATUS"; exit 1 ;;
+          esac
+        done
+        echo "❌ Gemini endpoint never reached 200 within 2 min"; exit 1
+
+    - name: Smoke-test homepage
+      if: env.CHANNEL_ID == 'live' || steps.deploy_preview.outcome == 'success'
+      env:
+        BASE_URL: >-
+          ${{ env.CHANNEL_ID == 'live'
+                && 'https://my-smart-shopper-e0c23.web.app'
+              || steps.deploy_preview.outputs.details_url }}
+      run: |
+        echo "🔄 Pinging $BASE_URL/"
+        for i in {1..24}; do
+          STATUS=$(curl -s -L -o /dev/null -w '%{http_code}' "$BASE_URL/")
+
+          if [ "$STATUS" = 200 ]; then
+            echo "✅ Homepage ready (HTTP 200)"; exit 0
+          fi
+
+          case "$STATUS" in 307|404|502|503)
+            echo "   still $STATUS (try $i/24)…"; sleep 5 ;;
+          *)
+            echo "❌ Unexpected HTTP $STATUS"; exit 1 ;;
+          esac
+        done
+        echo "❌ Homepage never reached 200 within 2 min"; exit 1
