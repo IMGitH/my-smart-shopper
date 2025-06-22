@@ -186,13 +186,21 @@ function App() {
     setLanguage(prevLang => prevLang === 'en' ? 'he' : 'en');
   };
 
-  const firebaseEnabled = Boolean(firebaseConfig?.projectId);
+  const firebaseEnabled = Boolean(
+    firebaseConfig?.apiKey &&
+    firebaseConfig?.authDomain &&
+    firebaseConfig?.projectId &&
+    firebaseConfig?.appId
+  );
   const firestoreReady = useMemo(() => db && userId && isAuthReady, [db, userId, isAuthReady]);
 
   // --- Firebase Initialization and Auth ---
   useEffect(() => {
     if (!firebaseEnabled) {
       console.warn('Firebase config missing; skipping initialization.');
+      setFirestoreError(
+        t('Firebase init failed:', language) + ' Missing configuration.'
+      );
       return;
     }
 
@@ -387,6 +395,10 @@ function App() {
   const autoMapItems = useCallback(async (items = rawShoppingList) => {
     if (items.length === 0) {
       setAutoMappingError(t('No items in list to suggest layout for.', language));
+      return;
+    }
+    if (!firebaseEnabled) {
+      setAutoMappingError('Firebase configuration missing.');
       return;
     }
     if (!firestoreReady) {
